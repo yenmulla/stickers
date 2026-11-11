@@ -100,11 +100,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Preview elements
   const previewContainer = document.getElementById('previewContainer');
   const directVideoWrapper = document.getElementById('directVideoWrapper');
+  const directStickerWrapper = document.getElementById('directStickerWrapper');
   const chatBubble = document.getElementById('chatBubble');
   const sourceVideoDirect = document.getElementById('sourceVideoDirect');
   const sourceVideoBubble = document.getElementById('sourceVideoBubble');
   const sourceImgDirect = document.getElementById('sourceImgDirect');
   const sourceImgBubble = document.getElementById('sourceImgBubble');
+  const finalStickerBubbleImg = document.getElementById('finalStickerBubbleImg');
 
   const bgCheckerBtn = document.getElementById('bgCheckerBtn');
   const bgDarkChatBtn = document.getElementById('bgDarkChatBtn');
@@ -524,12 +526,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isGifOrImg) {
       // Show image preview elements, hide video preview elements
       sourceVideoDirect.classList.add('hidden');
-      sourceVideoBubble.classList.add('hidden');
+      if (sourceVideoBubble) sourceVideoBubble.classList.add('hidden');
       sourceImgDirect.classList.remove('hidden');
-      sourceImgBubble.classList.remove('hidden');
+      if (sourceImgBubble) sourceImgBubble.classList.remove('hidden');
 
       sourceImgDirect.src = url;
-      sourceImgBubble.src = url;
+      if (sourceImgBubble) sourceImgBubble.src = url;
 
       durationDisplay.textContent = 'Animated GIF Loop';
       trimStartSlider.disabled = true;
@@ -544,9 +546,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       // Show video preview elements, hide image preview elements
       sourceImgDirect.classList.add('hidden');
-      sourceImgBubble.classList.add('hidden');
+      if (sourceImgBubble) sourceImgBubble.classList.add('hidden');
       sourceVideoDirect.classList.remove('hidden');
-      sourceVideoBubble.classList.remove('hidden');
+      if (sourceVideoBubble) sourceVideoBubble.classList.remove('hidden');
 
       trimStartSlider.disabled = false;
       trimDurationSlider.disabled = false;
@@ -554,19 +556,19 @@ document.addEventListener('DOMContentLoaded', () => {
       trimDurationSlider.classList.remove('opacity-40');
 
       sourceVideoDirect.muted = true;
-      sourceVideoBubble.muted = true;
+      if (sourceVideoBubble) sourceVideoBubble.muted = true;
       sourceVideoDirect.playsInline = true;
-      sourceVideoBubble.playsInline = true;
+      if (sourceVideoBubble) sourceVideoBubble.playsInline = true;
 
       // Load into preview videos
       sourceVideoDirect.src = url;
-      sourceVideoBubble.src = url;
+      if (sourceVideoBubble) sourceVideoBubble.src = url;
 
       sourceVideoDirect.playbackRate = state.speed;
-      sourceVideoBubble.playbackRate = state.speed;
+      if (sourceVideoBubble) sourceVideoBubble.playbackRate = state.speed;
 
       sourceVideoDirect.play().catch(e => console.log('Autoplay handled:', e));
-      sourceVideoBubble.play().catch(e => console.log('Autoplay handled:', e));
+      if (sourceVideoBubble) sourceVideoBubble.play().catch(e => console.log('Autoplay handled:', e));
 
       // Wait for video metadata
       const onMeta = () => {
@@ -694,47 +696,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Background Theme Switcher
-  bgCheckerBtn.addEventListener('click', () => {
-    setActiveBgBtn(bgCheckerBtn);
-    previewContainer.className = 'preview-box w-full max-w-[360px] aspect-square rounded-2xl flex items-center justify-center relative overflow-hidden shadow-2xl checkerboard-bg';
-    directVideoWrapper.classList.remove('hidden');
-    chatBubble.classList.add('hidden');
-    if (!sourceVideoDirect.classList.contains('hidden')) {
-      sourceVideoDirect.currentTime = sourceVideoBubble.currentTime;
-      sourceVideoDirect.play().catch(() => {});
-    }
-  });
+  // Background Theme Switcher for Generated Sticker Preview in Result Section
+  if (bgCheckerBtn) {
+    bgCheckerBtn.addEventListener('click', () => {
+      setActiveBgBtn(bgCheckerBtn);
+      if (previewContainer) {
+        previewContainer.className = 'preview-box w-full max-w-[340px] aspect-square rounded-2xl flex items-center justify-center relative overflow-hidden shadow-2xl checkerboard-bg';
+      }
+      if (directStickerWrapper) directStickerWrapper.classList.remove('hidden');
+      if (chatBubble) chatBubble.classList.add('hidden');
+    });
+  }
 
-  bgDarkChatBtn.addEventListener('click', () => {
-    setActiveBgBtn(bgDarkChatBtn);
-    previewContainer.className = 'preview-box w-full max-w-[360px] aspect-square rounded-2xl flex items-center justify-center relative overflow-hidden shadow-2xl wa-dark-theme';
-    directVideoWrapper.classList.add('hidden');
-    chatBubble.classList.remove('hidden');
-    if (!sourceVideoBubble.classList.contains('hidden')) {
-      sourceVideoBubble.currentTime = sourceVideoDirect.currentTime;
-      sourceVideoBubble.play().catch(() => {});
-    }
-  });
+  if (bgDarkChatBtn) {
+    bgDarkChatBtn.addEventListener('click', () => {
+      setActiveBgBtn(bgDarkChatBtn);
+      if (previewContainer) {
+        previewContainer.className = 'preview-box w-full max-w-[340px] aspect-square rounded-2xl flex items-center justify-center relative overflow-hidden shadow-2xl wa-dark-theme';
+      }
+      if (directStickerWrapper) directStickerWrapper.classList.add('hidden');
+      if (chatBubble) chatBubble.classList.remove('hidden');
+    });
+  }
 
-  bgLightChatBtn.addEventListener('click', () => {
-    setActiveBgBtn(bgLightChatBtn);
-    previewContainer.className = 'preview-box w-full max-w-[360px] aspect-square rounded-2xl flex items-center justify-center relative overflow-hidden shadow-2xl wa-light-theme';
-    directVideoWrapper.classList.add('hidden');
-    chatBubble.classList.remove('hidden');
-    if (!sourceVideoBubble.classList.contains('hidden')) {
-      sourceVideoBubble.currentTime = sourceVideoDirect.currentTime;
-      sourceVideoBubble.play().catch(() => {});
-    }
-  });
+  if (bgLightChatBtn) {
+    bgLightChatBtn.addEventListener('click', () => {
+      setActiveBgBtn(bgLightChatBtn);
+      if (previewContainer) {
+        previewContainer.className = 'preview-box w-full max-w-[340px] aspect-square rounded-2xl flex items-center justify-center relative overflow-hidden shadow-2xl wa-light-theme';
+      }
+      if (directStickerWrapper) directStickerWrapper.classList.add('hidden');
+      if (chatBubble) chatBubble.classList.remove('hidden');
+    });
+  }
 
   function setActiveBgBtn(activeBtn) {
     [bgCheckerBtn, bgDarkChatBtn, bgLightChatBtn].forEach(b => {
-      b.classList.remove('bg-slate-800', 'text-white', 'font-medium');
-      b.classList.add('text-slate-400');
+      if (b) {
+        b.classList.remove('bg-slate-800', 'text-white', 'font-medium');
+        b.classList.add('text-slate-400');
+      }
     });
-    activeBtn.classList.add('bg-slate-800', 'text-white', 'font-medium');
-    activeBtn.classList.remove('text-slate-400');
+    if (activeBtn) {
+      activeBtn.classList.add('bg-slate-800', 'text-white', 'font-medium');
+      activeBtn.classList.remove('text-slate-400');
+    }
   }
 
   // Metadata Toggle
@@ -808,6 +814,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function displayResult(result) {
     // Add cache buster so animated WebP always restarts freshly
     finalStickerImg.src = `${result.url}?t=${Date.now()}`;
+    if (finalStickerBubbleImg) {
+      finalStickerBubbleImg.src = `${result.url}?t=${Date.now()}`;
+    }
     finalSizeBadge.textContent = `${result.sizeKb} KB`;
 
     downloadStickerBtn.href = result.downloadUrl;

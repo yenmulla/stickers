@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final String PREFS_NAME = "twitsticker_prefs";
     private static final String KEY_SERVER_URL = "server_url";
-    public static final String DEFAULT_SERVER_URL = "http://192.168.1.200:3000";
+    public static final String DEFAULT_SERVER_URL = "https://stickers-egqa.onrender.com";
 
     private static final int FILE_CHOOSER_REQUEST_CODE = 101;
 
