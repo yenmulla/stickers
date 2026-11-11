@@ -12,8 +12,8 @@ public class StickerPack {
     public String publisherWebsite = "";
     public String privacyPolicyWebsite = "";
     public String licenseAgreementWebsite = "";
-    public String imageDataVersion = "1";
-    public boolean avoidCache = false;
+    public String imageDataVersion = "2";
+    public boolean avoidCache = true;
     public boolean animatedStickerPack = true;
     public String androidPlayStoreLink = "";
     public String iosAppStoreLink = "";

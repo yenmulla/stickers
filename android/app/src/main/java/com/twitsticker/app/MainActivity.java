@@ -134,6 +134,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setUserAgentString(settings.getUserAgentString() + " TwitStickerApp/1.0");
 
         // Add JavaScript bridge for WhatsApp native sticker export
         webView.addJavascriptInterface(new WebAppInterface(this, packManager), "TwitStickerNative");

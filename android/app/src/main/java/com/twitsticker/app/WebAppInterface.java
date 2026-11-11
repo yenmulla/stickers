@@ -37,10 +37,19 @@ public class WebAppInterface {
     }
 
     @JavascriptInterface
+    public void importStickerToPack(String stickerId, String packName, String author, String stickerUrl, String emojisJson) {
+        Log.d(TAG, "importStickerToPack (silent background sync): " + stickerUrl);
+        downloadAndAddSticker(stickerId, packName, author, stickerUrl, emojisJson, false);
+    }
+
+    @JavascriptInterface
     public void addStickerToWhatsApp(String stickerId, String packName, String author, String stickerUrl, String emojisJson) {
         Log.d(TAG, "addStickerToWhatsApp called: " + stickerUrl);
-        mainHandler.post(() -> Toast.makeText(activity, "Preparing sticker for WhatsApp...", Toast.LENGTH_SHORT).show());
+        mainHandler.post(() -> Toast.makeText(activity, "Adding sticker to WhatsApp...", Toast.LENGTH_SHORT).show());
+        downloadAndAddSticker(stickerId, packName, author, stickerUrl, emojisJson, true);
+    }
 
+    private void downloadAndAddSticker(String stickerId, String packName, String author, String stickerUrl, String emojisJson, boolean launchWhatsApp) {
         executor.execute(() -> {
             try {
                 // Parse emojis
@@ -60,16 +69,21 @@ public class WebAppInterface {
 
                 // If URL is relative, resolve it
                 String fullUrl = stickerUrl;
-                if (fullUrl.startsWith("/")) {
+                if (fullUrl != null && fullUrl.startsWith("/")) {
                     if (activity instanceof MainActivity) {
                         String base = ((MainActivity) activity).getServerBaseUrl();
                         fullUrl = base + fullUrl;
                     }
                 }
 
+                if (fullUrl == null || fullUrl.isEmpty()) {
+                    throw new Exception("Invalid sticker URL");
+                }
+
                 // Download sticker WebP to cache dir
                 File cacheDir = activity.getCacheDir();
-                File tempSticker = new File(cacheDir, (stickerId != null ? stickerId : "sticker_" + System.currentTimeMillis()) + ".webp");
+                String cleanId = (stickerId != null ? stickerId.replace("-", "_") : "sticker_" + System.currentTimeMillis());
+                File tempSticker = new File(cacheDir, cleanId + ".webp");
 
                 URL url = new URL(fullUrl);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -94,18 +108,20 @@ public class WebAppInterface {
                 String pName = (packName != null && !packName.trim().isEmpty()) ? packName : "TwitSticker Pack";
                 String pAuthor = (author != null && !author.trim().isEmpty()) ? author : "TwitSticker App";
 
-                packManager.addStickerToPack("twitsticker_main", pName, pAuthor, tempSticker, emojis);
+                StickerPack pack = packManager.addStickerToPack("twitsticker_main", pName, pAuthor, tempSticker, emojis);
+                Log.d(TAG, "Sticker added to pack! Total stickers in pack: " + pack.stickers.size());
 
-                // Launch WhatsApp on main thread
-                mainHandler.post(() -> {
-                    packManager.addPackToWhatsApp(activity, "twitsticker_main");
-                });
+                if (launchWhatsApp) {
+                    mainHandler.post(() -> packManager.addPackToWhatsApp(activity, "twitsticker_main"));
+                } else {
+                    mainHandler.post(() -> Toast.makeText(activity, "Sticker saved to pack!", Toast.LENGTH_SHORT).show());
+                }
 
             } catch (Exception e) {
                 Log.e(TAG, "Error importing sticker: " + e.getMessage(), e);
-                mainHandler.post(() -> {
-                    Toast.makeText(activity, "Failed to import sticker: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                });
+                if (launchWhatsApp) {
+                    mainHandler.post(() -> Toast.makeText(activity, "Failed to import sticker: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                }
             }
         });
     }
@@ -115,4 +131,3 @@ public class WebAppInterface {
         mainHandler.post(() -> packManager.addPackToWhatsApp(activity, packId));
     }
 }
-

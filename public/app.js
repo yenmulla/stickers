@@ -823,8 +823,19 @@ document.addEventListener('DOMContentLoaded', () => {
       downloadPackBtn.setAttribute('download', `whatsapp-sticker-pack-${result.stickerId.slice(0, 8)}.wastickers`);
     }
 
+    // Auto-sync into Android native pack in background so it's instantly available in the pack
+    if (window.TwitStickerNative && window.TwitStickerNative.importStickerToPack) {
+      window.TwitStickerNative.importStickerToPack(
+        result.stickerId,
+        result.metadata?.packName || 'TwitSticker Pack',
+        result.metadata?.author || 'TwitSticker App',
+        result.url,
+        JSON.stringify(result.metadata?.emojis || ['🔥', '✨'])
+      );
+    }
+
     // Auto-select Mobile tab if on Android or mobile device
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isMobile = /Android|iPhone|iPad|iPod|TwitStickerApp/i.test(navigator.userAgent);
     if (isMobile && tabSendMobile) {
       tabSendMobile.click();
     }
@@ -943,13 +954,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // ----------------------------------------------------
   // Native TwitSticker Android App Integration
   // ----------------------------------------------------
-  const isNative = typeof window.TwitStickerNative !== 'undefined';
+  const isNative = typeof window.TwitStickerNative !== 'undefined' || /TwitStickerApp/i.test(navigator.userAgent);
   const nativeImportBox = document.getElementById('nativeImportBox');
   const nativeAddToWhatsAppBtn = document.getElementById('nativeAddToWhatsAppBtn');
 
-  if (isNative && nativeImportBox) {
-    nativeImportBox.classList.remove('hidden');
-    // Hide third-party fallback button in app mode
+  if (isNative) {
     const playStoreBtn = document.getElementById('playStoreBtn');
     if (playStoreBtn) {
       playStoreBtn.classList.add('hidden');
@@ -973,6 +982,9 @@ document.addEventListener('DOMContentLoaded', () => {
           stickerUrl,
           JSON.stringify(emojis)
         );
+      } else if (downloadPackBtn) {
+        // Fallback for mobile browser: download .wastickers pack
+        downloadPackBtn.click();
       }
     });
   }
