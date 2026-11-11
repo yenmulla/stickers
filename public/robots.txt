@@ -4,4 +4,4 @@ Disallow: /api/
 Disallow: /uploads/
 Disallow: /download/
 
-Sitemap: https://stickers-egqa.onrender.com/sitemap.xml
+Sitemap: https://gifsticker.site/sitemap.xml
