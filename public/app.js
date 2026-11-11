@@ -869,14 +869,25 @@ document.addEventListener('DOMContentLoaded', () => {
       downloadPackBtn.setAttribute('download', `whatsapp-sticker-pack-${result.stickerId.slice(0, 8)}.wastickers`);
     }
 
-    // Populate Share as Link input and WhatsApp share link
-    const shareUrl = `${window.location.origin}/sticker/${result.stickerId}`;
-    if (shareLinkInput) {
-      shareLinkInput.value = shareUrl;
+  // Canonical Public Domain for Share Links
+  const DEFAULT_PUBLIC_DOMAIN = 'https://gifsticker.site';
+
+  function getShareUrl(stickerId) {
+    if (!stickerId) return DEFAULT_PUBLIC_DOMAIN;
+    if (window.location.hostname && (window.location.hostname.includes('gifsticker') || window.location.hostname.includes('gifstickers'))) {
+      return `${window.location.origin}/sticker/${stickerId}`;
     }
-    if (shareWaLinkBtn) {
-      shareWaLinkBtn.href = `https://wa.me/?text=${encodeURIComponent(`Check out this animated WhatsApp sticker: ${shareUrl}`)}`;
-    }
+    return `${DEFAULT_PUBLIC_DOMAIN}/sticker/${stickerId}`;
+  }
+
+  // Populate Share as Link input and WhatsApp share link
+  const shareUrl = result.shareUrl || getShareUrl(result.stickerId);
+  if (shareLinkInput) {
+    shareLinkInput.value = shareUrl;
+  }
+  if (shareWaLinkBtn) {
+    shareWaLinkBtn.href = `https://wa.me/?text=${encodeURIComponent(`Check out this animated WhatsApp sticker: ${shareUrl}`)}`;
+  }
 
     // Auto-sync into Android native pack in background so it's instantly available in the pack
     if (window.TwitStickerNative && window.TwitStickerNative.importStickerToPack) {
@@ -933,7 +944,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (shareWaBtn) {
     shareWaBtn.addEventListener('click', async () => {
       if (!state.lastResult) return;
-      const fullStickerUrl = `${window.location.origin}${state.lastResult.url}`;
+      const fullStickerUrl = state.lastResult.shareUrl || getShareUrl(state.lastResult.stickerId);
 
       // If mobile Web Share API is available with files support
       if (navigator.share) {
@@ -972,7 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (copyShareLinkBtn) {
     copyShareLinkBtn.addEventListener('click', async () => {
       if (!state.lastResult) return;
-      const shareUrl = `${window.location.origin}/sticker/${state.lastResult.stickerId}`;
+      const shareUrl = state.lastResult.shareUrl || getShareUrl(state.lastResult.stickerId);
 
       const triggerCopied = () => {
         if (copyShareLinkText) copyShareLinkText.textContent = 'Copied!';
