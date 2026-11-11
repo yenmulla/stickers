@@ -673,51 +673,71 @@
 
             <!-- Panel 2: Mobile (iPhone & Android) -->
             <div id="panelSendMobile" class="hidden space-y-4">
-              <!-- Native TwitSticker App 1-Tap Action (Always visible on mobile / Android) -->
-              <div id="nativeImportBox" class="p-4 rounded-xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-2 border-[#25D366] shadow-xl shadow-[#25D366]/20 text-center space-y-2">
+              <!-- Native TwitSticker 1-Tap Mobile Action -->
+              <div id="nativeImportBox" class="p-4 rounded-xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-2 border-[#25D366] shadow-xl shadow-[#25D366]/20 text-center space-y-3">
                 <div class="flex items-center justify-center gap-1.5 text-emerald-400 font-bold text-xs uppercase tracking-wider">
                   <i data-lucide="zap" class="w-4 h-4 fill-emerald-400"></i>
-                  <span>WhatsApp 1-Tap Direct Add</span>
+                  <span>WhatsApp 1-Tap Direct Send & Save</span>
                 </div>
+                
                 <button 
                   type="button" 
                   id="nativeAddToWhatsAppBtn" 
                   class="w-full py-4 px-6 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 font-['Outfit'] font-black text-base shadow-lg shadow-[#25D366]/30 transition active:scale-[0.98] flex items-center justify-center gap-2.5"
                 >
-                  <i data-lucide="plus-circle" class="w-6 h-6 stroke-[2.5]"></i>
-                  <span>ADD DIRECTLY TO WHATSAPP</span>
+                  <i data-lucide="send" class="w-6 h-6 stroke-[2.5]"></i>
+                  <span id="nativeAddBtnText">SEND / ADD TO WHATSAPP</span>
                 </button>
-                <p class="text-[11px] text-slate-300">Tap to add this converted sticker directly to your WhatsApp keyboard!</p>
+
+                <!-- Step-by-step saving instructions -->
+                <div class="p-3 bg-slate-950/90 rounded-xl border border-slate-800 text-left space-y-2 text-xs">
+                  <div class="font-semibold text-slate-200 flex items-center gap-1.5">
+                    <i data-lucide="star" class="w-4 h-4 text-amber-400 fill-amber-400"></i>
+                    <span>How to add directly to your WhatsApp keyboard:</span>
+                  </div>
+                  <ol class="list-decimal list-inside text-slate-300 space-y-1.5 pl-0.5 text-[11.5px] leading-relaxed">
+                    <li>Tap <strong class="text-[#25D366]">SEND / ADD TO WHATSAPP</strong> above and select <strong>WhatsApp</strong> from the share menu.</li>
+                    <li>Choose any chat (or <strong>"Message yourself"</strong>) to send your sticker.</li>
+                    <li>Inside WhatsApp, tap the sticker and select <strong class="text-amber-300">"Add to Favorites" (⭐)</strong>. It is now saved forever in your WhatsApp sticker keyboard!</li>
+                  </ol>
+                </div>
               </div>
 
+              <!-- Secondary Mobile Actions -->
               <div id="fallbackMobileGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                
-                <!-- 1-Tap Sticker Pack (.wastickers) -->
+                <!-- Direct Raw WebP Download -->
                 <a 
-                  id="downloadPackBtn" 
+                  id="downloadStickerBtnMobile" 
                   href="#" 
-                  class="p-4 rounded-xl bg-gradient-to-r from-emerald-600 to-[#25D366] hover:from-emerald-500 hover:to-[#22c35e] text-slate-950 font-['Outfit'] font-bold text-sm shadow-xl shadow-[#25D366]/20 transition flex flex-col items-center justify-center text-center gap-1 active:scale-[0.98]"
+                  download="whatsapp-sticker.webp" 
+                  class="p-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-['Outfit'] font-semibold text-xs border border-slate-700 transition flex items-center justify-center gap-2 text-center"
                 >
-                  <div class="flex items-center gap-2">
-                    <i data-lucide="package" class="w-5 h-5 text-slate-950"></i>
-                    <span class="text-base">1. Download .wastickers Pack</span>
-                  </div>
-                  <span class="text-[11px] font-normal opacity-90">Auto-formatted pack ready for WhatsApp</span>
+                  <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+                  <span>Download .webp Sticker File</span>
                 </a>
 
-                <!-- Open in Sticker Maker / Google Play helper -->
+                <!-- Open WhatsApp app directly -->
                 <a 
-                  id="playStoreBtn" 
-                  href="https://play.google.com/store/apps/details?id=com.marsvard.stickermakerforwhatsapp" 
-                  target="_blank" 
-                  class="p-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-['Outfit'] font-semibold text-sm border border-slate-700 transition flex flex-col items-center justify-center text-center gap-1"
+                  id="openWhatsAppAppBtn" 
+                  href="whatsapp://" 
+                  class="p-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-[#25D366] font-['Outfit'] font-semibold text-xs border border-[#25D366]/40 transition flex items-center justify-center gap-2 text-center"
                 >
-                  <div class="flex items-center gap-2">
-                    <i data-lucide="play" class="w-5 h-5 text-[#25D366]"></i>
-                    <span class="text-base">2. Open "Sticker Maker"</span>
-                  </div>
-                  <span class="text-[11px] text-slate-400">Tap to get free importer from Google Play</span>
+                  <i data-lucide="message-circle" class="w-4 h-4 text-[#25D366]"></i>
+                  <span>Open WhatsApp App</span>
                 </a>
+              </div>
+
+              <!-- Optional Pack Importer (.wastickers for Sticker Maker app) -->
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80 flex items-center justify-between flex-wrap gap-2 text-xs">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="package" class="w-4 h-4 text-slate-400"></i>
+                  <span class="text-slate-400 text-[11px]">Using third-party sticker apps?</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <a id="downloadPackBtn" href="#" class="text-[11px] font-medium text-emerald-400 hover:underline">Download .wastickers pack</a>
+                  <span class="text-slate-600">•</span>
+                  <a id="playStoreBtn" href="https://play.google.com/store/apps/details?id=com.marsvard.stickermakerforwhatsapp" target="_blank" class="text-[11px] text-slate-400 hover:text-slate-200">Sticker Maker (Google Play)</a>
+                </div>
               </div>
 
               <!-- Quick Single File Download button -->

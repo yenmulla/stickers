@@ -18,7 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fps: 14,
     speed: 1.0,
     fitMode: 'fit', // 'fit' | 'crop'
-    lastResult: null
+    lastResult: null,
+    currentStickerBlob: null
   };
 
   // Local Storage Key & Helpers (Declared upfront to prevent TDZ ReferenceError)
@@ -934,6 +935,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function displayResult(result) {
     if (!result) return;
 
+    // Prefetch WebP blob into memory so mobile user gestures never time out on share
+    state.currentStickerBlob = null;
+    fetch(result.url)
+      .then(r => r.blob())
+      .then(b => { state.currentStickerBlob = b; })
+      .catch(e => console.warn('Blob prefetch:', e));
+
     // Add cache buster so animated WebP always restarts freshly
     if (finalStickerImg) {
       finalStickerImg.src = `${result.url}?t=${Date.now()}`;
@@ -1235,14 +1243,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (nativeAddToWhatsAppBtn) {
-    nativeAddToWhatsAppBtn.addEventListener('click', () => {
+    nativeAddToWhatsAppBtn.addEventListener('click', async () => {
       if (!state.lastResult) return;
       const stickerId = state.lastResult.stickerId;
-      const packName = state.lastResult.metadata?.packName || 'TwitSticker Pack';
-      const author = state.lastResult.metadata?.author || 'TwitSticker App';
+      const packName = state.lastResult.metadata?.packName || 'Twitter Sticker';
+      const author = state.lastResult.metadata?.author || 'TwitSticker';
       const stickerUrl = state.lastResult.url;
       const emojis = state.lastResult.metadata?.emojis || ['🔥', '✨'];
 
+      // 1. If running inside native Android App wrapper with Java ContentProvider
       if (window.TwitStickerNative && window.TwitStickerNative.addStickerToWhatsApp) {
         window.TwitStickerNative.addStickerToWhatsApp(
           stickerId,
@@ -1251,9 +1260,81 @@ document.addEventListener('DOMContentLoaded', () => {
           stickerUrl,
           JSON.stringify(emojis)
         );
-      } else if (downloadPackBtn) {
-        // Fallback for mobile browser: download .wastickers pack
-        downloadPackBtn.click();
+        return;
+      }
+
+      // 2. Standard Mobile Browser (Android Chrome, iOS Safari)
+      const btnText = document.getElementById('nativeAddBtnText');
+      const originalText = btnText ? btnText.textContent : 'SEND / ADD TO WHATSAPP';
+      if (btnText) btnText.textContent = 'Opening WhatsApp...';
+      nativeAddToWhatsAppBtn.classList.add('opacity-80', 'pointer-events-none');
+
+      try {
+        // Retrieve cached blob or fetch fresh
+        let blob = state.currentStickerBlob;
+        if (!blob) {
+          const res = await fetch(stickerUrl);
+          blob = await res.blob();
+          state.currentStickerBlob = blob;
+        }
+
+        const fileName = `whatsapp-sticker-${stickerId.slice(0, 8)}.webp`;
+        const file = new File([blob], fileName, { type: 'image/webp' });
+
+        // Method A: Modern Web Share API with File (Native Share Sheet -> WhatsApp)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: packName,
+            text: 'Send this sticker to WhatsApp'
+          });
+
+          if (btnText) btnText.textContent = 'Sent! Tap Sticker to Favorite ⭐';
+          nativeAddToWhatsAppBtn.classList.remove('opacity-80', 'pointer-events-none');
+          setTimeout(() => {
+            if (btnText) btnText.textContent = originalText;
+          }, 4500);
+          return;
+        }
+
+        // Method B: Web Share without files (Share link / page)
+        // Direct download fallback
+        const a = document.createElement('a');
+        a.href = state.lastResult.downloadUrl || stickerUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        if (btnText) btnText.textContent = 'Downloaded! Opening WhatsApp...';
+        
+        setTimeout(() => {
+          window.location.href = 'whatsapp://';
+        }, 600);
+
+        setTimeout(() => {
+          if (btnText) btnText.textContent = originalText;
+          nativeAddToWhatsAppBtn.classList.remove('opacity-80', 'pointer-events-none');
+        }, 4000);
+
+      } catch (err) {
+        console.warn('Native add to WhatsApp handled:', err);
+        nativeAddToWhatsAppBtn.classList.remove('opacity-80', 'pointer-events-none');
+        
+        // If user cancelled system share dialog (AbortError), revert smoothly
+        if (err.name === 'AbortError') {
+          if (btnText) btnText.textContent = originalText;
+          return;
+        }
+
+        // Fallback: Trigger download and direct WhatsApp link
+        if (downloadStickerBtnMobile) {
+          downloadStickerBtnMobile.click();
+        }
+        if (btnText) btnText.textContent = 'Sticker Saved! Open WhatsApp';
+        setTimeout(() => {
+          if (btnText) btnText.textContent = originalText;
+        }, 3500);
       }
     });
   }
