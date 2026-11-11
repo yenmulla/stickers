@@ -28,11 +28,13 @@ if (!fs.existsSync(sample3)) {
   execSync(`"${ffmpeg}" -y -f lavfi -i "mandelbrot=size=480x480:rate=24" -t 3 -pix_fmt yuv420p "${sample3}"`);
 }
 
-// Sample 4: Earth Rotating GIF from Wikimedia (if downloaded earlier)
+// Sample 4: Animated Pattern GIF
 const earthGif = path.join(__dirname, 'sample-earth.gif');
 const sampleEarth = path.join(samplesDir, 'sample-earth.gif');
 if (fs.existsSync(earthGif) && !fs.existsSync(sampleEarth)) {
   fs.copyFileSync(earthGif, sampleEarth);
+} else if (!fs.existsSync(sampleEarth)) {
+  execSync(`"${ffmpeg}" -y -f lavfi -i "testsrc=size=256x256:rate=10" -t 2.5 "${sampleEarth}"`);
 }
 
 console.log('Sample generation completed successfully!');

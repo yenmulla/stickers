@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_open_whatsapp_pack"
+        android:title="Open in WhatsApp"
+        android:icon="@android:drawable/ic_menu_send"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_refresh"
+        android:title="Reload"
+        android:icon="@android:drawable/ic_menu_rotate"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_server_settings"
+        android:title="Server Settings"
+        android:icon="@android:drawable/ic_menu_preferences"
+        app:showAsAction="never" />
+
+</menu>
+

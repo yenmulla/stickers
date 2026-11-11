@@ -939,5 +939,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial setup
   updateHistoryBadge();
+
+  // ----------------------------------------------------
+  // Native TwitSticker Android App Integration
+  // ----------------------------------------------------
+  const isNative = typeof window.TwitStickerNative !== 'undefined';
+  const nativeImportBox = document.getElementById('nativeImportBox');
+  const nativeAddToWhatsAppBtn = document.getElementById('nativeAddToWhatsAppBtn');
+
+  if (isNative && nativeImportBox) {
+    nativeImportBox.classList.remove('hidden');
+    // Hide third-party fallback button in app mode
+    const playStoreBtn = document.getElementById('playStoreBtn');
+    if (playStoreBtn) {
+      playStoreBtn.classList.add('hidden');
+    }
+  }
+
+  if (nativeAddToWhatsAppBtn) {
+    nativeAddToWhatsAppBtn.addEventListener('click', () => {
+      if (!state.lastResult) return;
+      const stickerId = state.lastResult.stickerId;
+      const packName = state.lastResult.metadata?.packName || 'TwitSticker Pack';
+      const author = state.lastResult.metadata?.author || 'TwitSticker App';
+      const stickerUrl = state.lastResult.url;
+      const emojis = state.lastResult.metadata?.emojis || ['🔥', '✨'];
+
+      if (window.TwitStickerNative && window.TwitStickerNative.addStickerToWhatsApp) {
+        window.TwitStickerNative.addStickerToWhatsApp(
+          stickerId,
+          packName,
+          author,
+          stickerUrl,
+          JSON.stringify(emojis)
+        );
+      }
+    });
+  }
+
+  // Handle Shared Tweet URL from Android System Share Sheet
+  window.handleSharedUrl = function(sharedUrl) {
+    if (!sharedUrl) return;
+    if (tweetUrlInput) {
+      tweetUrlInput.value = sharedUrl;
+      if (tabLinkBtn) tabLinkBtn.click();
+      if (fetchBtn) fetchBtn.click();
+    }
+  };
 });
 

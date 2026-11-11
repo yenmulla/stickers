@@ -5,5 +5,13 @@ public/stickers/*
 !public/stickers/.gitkeep
 .DS_Store
 *.log
-test-*
+*.wastickers
+test-*.webp
+test-*.wastickers
 
+# Android build and local files
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/

@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "samples": "node generate-samples.js"
+    "samples": "node generate-samples.js",
+    "test": "node test-exif.js && node test-server-integration.js"
   },
   "keywords": [],
   "author": "",

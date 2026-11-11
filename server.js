@@ -195,6 +195,22 @@ app.get('/api/stickers/:id/pack', (req, res) => {
   readStream.pipe(res);
 });
 
+// 3.2 Download TwitSticker Android App (APK)
+app.get(['/download/twitsticker.apk', '/api/app/download'], (req, res) => {
+  const apkPath = path.resolve(__dirname, 'android/app/build/outputs/apk/debug/app-debug.apk');
+  if (!fs.existsSync(apkPath)) {
+    return res.status(404).json({ error: 'TwitSticker APK not found or still compiling.' });
+  }
+  const stat = fs.statSync(apkPath);
+  res.writeHead(200, {
+    'Content-Type': 'application/vnd.android.package-archive',
+    'Content-Length': stat.size,
+    'Content-Disposition': 'attachment; filename="TwitSticker.apk"'
+  });
+  const readStream = fs.createReadStream(apkPath);
+  readStream.pipe(res);
+});
+
 // 4. Sample clips endpoint
 app.get('/api/samples', (req, res) => {
   const samples = [

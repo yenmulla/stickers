@@ -53,6 +53,16 @@
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span>WhatsApp Spec: &lt; 500 KB</span>
         </div>
+        <a 
+          href="/download/twitsticker.apk" 
+          download="TwitSticker.apk" 
+          class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition"
+          title="Download our native Android app"
+        >
+          <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Get TwitSticker App</span>
+          <span class="sm:hidden">App</span>
+        </a>
         <button id="viewHistoryBtn" class="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition border border-slate-700 text-slate-200">
           <i data-lucide="history" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
           <span class="hidden sm:inline">My Stickers</span>
@@ -566,7 +576,24 @@
 
             <!-- Panel 2: Mobile (iPhone & Android) -->
             <div id="panelSendMobile" class="hidden space-y-4">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Native TwitSticker App 1-Tap Action (Visible inside TwitSticker Android App) -->
+              <div id="nativeImportBox" class="hidden p-4 rounded-xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-2 border-[#25D366] shadow-xl shadow-[#25D366]/20 text-center space-y-2">
+                <div class="flex items-center justify-center gap-1.5 text-emerald-400 font-bold text-xs uppercase tracking-wider">
+                  <i data-lucide="zap" class="w-4 h-4 fill-emerald-400"></i>
+                  <span>TwitSticker App Detected</span>
+                </div>
+                <button 
+                  type="button" 
+                  id="nativeAddToWhatsAppBtn" 
+                  class="w-full py-4 px-6 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 font-['Outfit'] font-black text-base shadow-lg shadow-[#25D366]/30 transition active:scale-[0.98] flex items-center justify-center gap-2.5"
+                >
+                  <i data-lucide="plus-circle" class="w-6 h-6 stroke-[2.5]"></i>
+                  <span>ADD DIRECTLY TO WHATSAPP</span>
+                </button>
+                <p class="text-[11px] text-slate-300">Tap to inject directly into your WhatsApp sticker keyboard!</p>
+              </div>
+
+              <div id="fallbackMobileGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 
                 <!-- 1-Tap Sticker Pack (.wastickers) -->
                 <a 

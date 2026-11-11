@@ -17,33 +17,21 @@ function createWhatsAppExif(metadata = {}) {
   const jsonStr = JSON.stringify(payload);
   const jsonBuf = Buffer.from(jsonStr, 'utf8');
 
-  // WhatsApp Exif Header
-  const exifHeader = Buffer.from('Exif\0\0');
-
-  // TIFF Header (Little Endian 'II' + 42 + offset 8)
-  const tiffHeader = Buffer.from([
+  // WhatsApp Exif TIFF structure:
+  // Little-endian header ('II*') + 1 IFD entry with tag 0x5741 ('WA')
+  const exifAttr = Buffer.from([
     0x49, 0x49, 0x2A, 0x00, // II * \0
-    0x08, 0x00, 0x00, 0x00, // offset to first IFD (8)
-    0x01, 0x00,             // 1 directory entry
-    0x87, 0x69,             // tag: Exif IFD Pointer (0x8769)
-    0x04, 0x00,             // type: LONG (4)
-    0x01, 0x00, 0x00, 0x00, // count: 1
-    0x1A, 0x00, 0x00, 0x00, // offset: 26 bytes from TIFF start
-    0x00, 0x00, 0x00, 0x00  // offset to next IFD: 0
+    0x08, 0x00, 0x00, 0x00, // Offset to first IFD (8)
+    0x01, 0x00,             // Number of directory entries: 1
+    0x41, 0x57,             // Tag: 0x5741 ('WA' for WhatsApp)
+    0x07, 0x00,             // Type: UNDEFINED (7)
+    0x00, 0x00, 0x00, 0x00, // Length (placeholder for jsonBuf.length)
+    0x16, 0x00, 0x00, 0x00  // Offset to payload: 22 bytes from TIFF start (0x16)
   ]);
 
-  const jsonLen = jsonBuf.length;
-  const jsonOffset = 26 + 2 + 12 + 4; // 44 bytes from TIFF start
+  exifAttr.writeUInt32LE(jsonBuf.length, 14);
 
-  const subIfd = Buffer.alloc(18);
-  subIfd.writeUInt16LE(1, 0); // 1 entry in sub-IFD
-  subIfd.writeUInt16LE(0x02, 2); // tag 0x02 (custom / UserComment)
-  subIfd.writeUInt16LE(0x07, 4); // type UNDEFINED
-  subIfd.writeUInt32LE(jsonLen, 6); // count
-  subIfd.writeUInt32LE(jsonOffset, 10); // offset
-  subIfd.writeUInt32LE(0, 14); // next IFD: 0
-
-  return Buffer.concat([exifHeader, tiffHeader, subIfd, jsonBuf]);
+  return Buffer.concat([exifAttr, jsonBuf]);
 }
 
 function injectWhatsAppMetadata(webpBuffer, metadata = {}) {
