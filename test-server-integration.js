@@ -95,9 +95,12 @@ async function runIntegrationTest() {
       if (fileRes.status !== 200) throw new Error(`Sample file missing: ${sample.url}`);
     }
 
-    // 3. Test Network info endpoint
+    // 3. Test Network info & Health endpoints
     const netRes = await httpGet('http://localhost:3099/api/network-info');
     console.log('GET /api/network-info -> Status:', netRes.status);
+    const healthRes = await httpGet('http://localhost:3099/healthz');
+    console.log('GET /healthz -> Status:', healthRes.status);
+    if (healthRes.status !== 200) throw new Error('Health check failed');
 
     // 4. Test Conversion endpoint
     console.log('Testing conversion of /samples/sample-bars.mp4 ...');

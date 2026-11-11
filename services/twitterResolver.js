@@ -74,13 +74,99 @@ function extractWithFxTwitter(tweetUrl) {
 }
 
 /**
+ * Expands short URLs (like t.co) by following redirects
+ */
+function resolveRedirects(initialUrl, maxRedirects = 5) {
+  return new Promise((resolve) => {
+    let currentUrl = initialUrl;
+    let redirectCount = 0;
+
+    function step(urlStr) {
+      if (redirectCount >= maxRedirects) return resolve(urlStr);
+      try {
+        const parsed = new URL(urlStr);
+        const client = parsed.protocol === 'https:' ? https : http;
+        const req = client.request(urlStr, { method: 'HEAD', headers: { 'User-Agent': 'Mozilla/5.0' } }, res => {
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            redirectCount++;
+            let nextUrl = res.headers.location;
+            if (!nextUrl.startsWith('http')) {
+              nextUrl = new URL(nextUrl, urlStr).toString();
+            }
+            return step(nextUrl);
+          }
+          resolve(urlStr);
+        });
+        req.on('error', () => resolve(urlStr));
+        req.setTimeout(5000, () => {
+          req.destroy();
+          resolve(urlStr);
+        });
+        req.end();
+      } catch (e) {
+        resolve(urlStr);
+      }
+    }
+
+    step(currentUrl);
+  });
+}
+
+/**
+ * Fallback to VxTwitter API
+ */
+function extractWithVxTwitter(statusId) {
+  return new Promise((resolve, reject) => {
+    const apiUrl = `https://api.vxtwitter.com/Twitter/status/${statusId}`;
+    https.get(apiUrl, { headers: { 'User-Agent': 'TwitSticker/1.0' } }, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json && json.media_extended && json.media_extended.length > 0) {
+            const vid = json.media_extended.find(m => m.type === 'video' || m.type === 'gif') || json.media_extended[0];
+            if (vid && vid.url) {
+              return resolve({
+                title: json.text || 'Twitter Media',
+                uploader: json.user_screen_name ? `@${json.user_screen_name}` : (json.user_name || 'Twitter User'),
+                url: vid.url,
+                thumbnail: vid.thumbnail_url || null,
+                duration: vid.duration_millis ? vid.duration_millis / 1000 : 3.0
+              });
+            }
+          }
+          reject(new Error('No media in VxTwitter response'));
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }).on('error', reject);
+  });
+}
+
+/**
  * Main resolution function
  */
 async function resolveMedia(inputUrl) {
-  const url = inputUrl.trim();
+  let url = inputUrl.trim();
+
+  // If protocol missing, add https
+  if (!/^https?:\/\//i.test(url) && !url.startsWith('/')) {
+    url = 'https://' + url;
+  }
+
+  // Resolve short links like t.co
+  if (/^https?:\/\/t\.co\//i.test(url) || /^https?:\/\/bit\.ly\//i.test(url)) {
+    url = await resolveRedirects(url);
+  }
 
   // 1. Check if directly a video or gif URL
-  if (url.match(/\.(mp4|gif|webm|mov)(\?.*)?$/i) || url.includes('video.twimg.com') || url.includes('giphy.com') || url.includes('tenor.com')) {
+  if (url.match(/\.(mp4|gif|webm|mov)(\?.*)?$/i) || 
+      url.includes('video.twimg.com') || 
+      url.includes('giphy.com') || 
+      url.includes('tenor.com') || 
+      url.includes('imgur.com')) {
     return {
       success: true,
       source: 'direct',
@@ -93,10 +179,13 @@ async function resolveMedia(inputUrl) {
   }
 
   // 2. Check if Twitter/X URL
-  const isTwitter = /^(https?:\/\/)?(www\.)?(mobile\.)?(twitter|x)\.com\/.+/i.test(url);
+  const isTwitter = /^(https?:\/\/)?(www\.)?(mobile\.)?(twitter|x|fxtwitter|vxtwitter|fixupx)\.com\/.+/i.test(url);
   if (!isTwitter) {
     throw new Error('Please enter a valid Twitter/X post link or direct media URL');
   }
+
+  const statusMatch = url.match(/status\/(\d+)/);
+  const statusId = statusMatch ? statusMatch[1] : null;
 
   // Strategy A: yt-dlp
   try {
@@ -132,19 +221,37 @@ async function resolveMedia(inputUrl) {
   }
 
   // Strategy B: FxTwitter fallback
-  try {
-    const fxInfo = await extractWithFxTwitter(url);
-    return {
-      success: true,
-      source: 'fxtwitter',
-      videoUrl: fxInfo.url,
-      title: fxInfo.title,
-      author: fxInfo.uploader,
-      duration: fxInfo.duration || 3.0,
-      thumbnail: fxInfo.thumbnail
-    };
-  } catch (fxErr) {
-    console.warn('FxTwitter fallback failed:', fxErr.message);
+  if (statusId) {
+    try {
+      const fxInfo = await extractWithFxTwitter(url);
+      return {
+        success: true,
+        source: 'fxtwitter',
+        videoUrl: fxInfo.url,
+        title: fxInfo.title,
+        author: fxInfo.uploader,
+        duration: fxInfo.duration || 3.0,
+        thumbnail: fxInfo.thumbnail
+      };
+    } catch (fxErr) {
+      console.warn('FxTwitter fallback failed:', fxErr.message);
+    }
+
+    // Strategy C: VxTwitter fallback
+    try {
+      const vxInfo = await extractWithVxTwitter(statusId);
+      return {
+        success: true,
+        source: 'vxtwitter',
+        videoUrl: vxInfo.url,
+        title: vxInfo.title,
+        author: vxInfo.uploader,
+        duration: vxInfo.duration || 3.0,
+        thumbnail: vxInfo.thumbnail
+      };
+    } catch (vxErr) {
+      console.warn('VxTwitter fallback failed:', vxErr.message);
+    }
   }
 
   throw new Error('Could not find any video or GIF in this tweet. Please ensure the tweet has a video/GIF attached and is publicly accessible.');

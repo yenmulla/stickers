@@ -246,6 +246,15 @@ app.get('/api/samples', (req, res) => {
   res.json({ samples });
 });
 
+// Health Check endpoint
+app.get(['/healthz', '/api/health'], (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Network Info endpoint
 app.get('/api/network-info', (req, res) => {
   const addresses = getNetworkAddresses();

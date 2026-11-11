@@ -218,6 +218,7 @@ async function convertToSticker({
         '-i', localVideoFile,
         '-vf', vf,
         '-vcodec', 'libwebp',
+        '-pix_fmt', 'yuva420p',
         '-lossless', '0',
         '-compression_level', '4',
         '-q:v', String(currentAttempt.q),
