@@ -1,13 +1,29 @@
 # TwitSticker (gifsticker.site)
 
-> Convert Twitter and X videos & GIFs into transparent animated WhatsApp stickers under 500 KB with 1 click.
+> Free online Twitter & X video to WhatsApp animated sticker converter. Turn viral Twitter/X videos, animated GIFs, and memes into transparent 512x512 animated WhatsApp stickers under 500 KB in 1 click.
+
+## Target Search Queries & Keywords
+- twitter to whatsapp sticker
+- convert twitter video to whatsapp sticker
+- x video to sticker maker
+- turn twitter gif into whatsapp sticker
+- animated sticker maker 512x512
+- whatsapp animated stickers under 500kb
+- free whatsapp sticker generator no watermark
+- save twitter video as whatsapp sticker
+- twitter meme to sticker
+- transparent animated webp sticker
+- whatsapp web sticker drag and drop
+- mp4 to whatsapp moving sticker
+- create whatsapp stickers from twitter link
 
 ## Core Capabilities
-- **Twitter to WhatsApp Sticker Conversion**: Converts viral videos and animated GIFs from Twitter/X links into official 512x512 WebP animated stickers compliant with WhatsApp's strict file size limit (< 500 KB).
+- **Twitter & X to WhatsApp Sticker Conversion**: Converts videos and animated GIFs from Twitter/X links into official 512x512 WebP animated stickers compliant with WhatsApp's strict size limit (< 500 KB).
 - **Embedded WhatsApp EXIF Metadata**: Injects custom sticker pack name, publisher author, and emoji tags into the WebP container for native WhatsApp keyboard recognition.
-- **WhatsApp Web & Desktop Support**: Copy sticker directly to system clipboard to paste into WhatsApp Web (Ctrl+V) as a real transparent animated sticker.
-- **Android Native 1-Tap Add**: Includes companion Android app with ContentProvider integration to add packs directly to WhatsApp without third-party tools.
+- **WhatsApp Web & Desktop Drag-and-Drop**: 1-click download of .webp sticker files that drag and drop directly into WhatsApp Web chat to send as true animated stickers.
+- **Mobile 1-Tap Share & Add**: Native Web Share API integration to send stickers directly to WhatsApp on Android and iOS, ready to tap "Add to Favorites" (⭐) to save to the sticker keyboard.
 - **Direct Sticker Sharing**: Every converted sticker generates a shareable link at `https://gifsticker.site/sticker/<id>` with rich OpenGraph preview cards for social messaging apps.
+- **File Upload Support**: Convert local MP4, WebM, MOV, and GIF files directly without needing a Twitter link.
 
 ## Key Links & Resources
 - [TwitSticker Home](https://gifsticker.site/): Web app and converter interface.
