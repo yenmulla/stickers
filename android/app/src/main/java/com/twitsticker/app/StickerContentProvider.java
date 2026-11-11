@@ -60,6 +60,7 @@ public class StickerContentProvider extends ContentProvider {
         MATCHER.addURI(AUTHORITY, METADATA_PATH, METADATA_CODE);
         MATCHER.addURI(AUTHORITY, METADATA_PATH + "/*", METADATA_CODE_FOR_SINGLE_PACK);
         MATCHER.addURI(AUTHORITY, STICKERS_PATH + "/*", STICKERS_CODE);
+        MATCHER.addURI(AUTHORITY, STICKERS_ASSET_PATH + "/*", STICKERS_ASSET_CODE);
         MATCHER.addURI(AUTHORITY, STICKERS_ASSET_PATH + "/*/*", STICKERS_ASSET_CODE);
     }
 
@@ -75,6 +76,7 @@ public class StickerContentProvider extends ContentProvider {
     @Override
     public Cursor query(@NonNull Uri uri, @Nullable String[] projection, @Nullable String selection, @Nullable String[] selectionArgs, @Nullable String sortOrder) {
         int code = MATCHER.match(uri);
+        Log.d(TAG, "query() URI: " + uri + " matched code: " + code);
         switch (code) {
             case METADATA_CODE:
                 return getPackForAllPacks(uri);
@@ -83,6 +85,12 @@ public class StickerContentProvider extends ContentProvider {
             case STICKERS_CODE:
                 return getStickersForPack(uri);
             default:
+                // Safe fallback for metadata or stickers
+                if (uri.toString().contains("/" + METADATA_PATH)) {
+                    return getCursorForSinglePack(uri);
+                } else if (uri.toString().contains("/" + STICKERS_PATH)) {
+                    return getStickersForPack(uri);
+                }
                 throw new IllegalArgumentException("Unknown URI: " + uri);
         }
     }
@@ -117,7 +125,7 @@ public class StickerContentProvider extends ContentProvider {
             builder.add(pack.publisherWebsite != null ? pack.publisherWebsite : "");
             builder.add(pack.privacyPolicyWebsite != null ? pack.privacyPolicyWebsite : "");
             builder.add(pack.licenseAgreementWebsite != null ? pack.licenseAgreementWebsite : "");
-            builder.add(pack.imageDataVersion != null ? pack.imageDataVersion : "1");
+            builder.add(pack.imageDataVersion != null ? pack.imageDataVersion : "2");
             builder.add(pack.avoidCache ? 1 : 0);
             builder.add(pack.animatedStickerPack ? 1 : 0);
         }
@@ -185,40 +193,52 @@ public class StickerContentProvider extends ContentProvider {
     @Nullable
     @Override
     public AssetFileDescriptor openAssetFile(@NonNull Uri uri, @NonNull String mode) throws FileNotFoundException {
-        int code = MATCHER.match(uri);
-        if (code == STICKERS_ASSET_CODE) {
-            List<String> pathSegments = uri.getPathSegments();
-            if (pathSegments.size() < 3) {
-                throw new IllegalArgumentException("Path segments should be at least 3, uri is: " + uri);
-            }
-            String identifier = pathSegments.get(pathSegments.size() - 2);
-            String fileName = pathSegments.get(pathSegments.size() - 1);
-
-            File packDir = packManager.getPackDir(identifier);
-            File file = new File(packDir, fileName);
-
-            if (file.exists() && file.length() > 0) {
-                ParcelFileDescriptor pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
-                return new AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH);
-            }
-
-            // If not found in internal packDir, check if it's a starter/tray asset and copy it
-            File copied = packManager.copyAssetToPackDirIfMissing(identifier, fileName);
-            if (copied != null && copied.exists() && copied.length() > 0) {
-                ParcelFileDescriptor pfd = ParcelFileDescriptor.open(copied, ParcelFileDescriptor.MODE_READ_ONLY);
-                return new AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH);
-            }
-
-            // Fallback: try opening from app assets directly
-            try {
-                AssetManager am = Objects.requireNonNull(getContext()).getAssets();
-                return am.openFd(fileName);
-            } catch (IOException e) {
-                Log.e(TAG, "File not found: " + fileName + " in " + packDir.getAbsolutePath() + " or assets: " + e.getMessage());
-                throw new FileNotFoundException("Cannot find " + fileName + " in pack dir or assets");
-            }
+        Log.d(TAG, "openAssetFile() requested: " + uri);
+        List<String> pathSegments = uri.getPathSegments();
+        if (pathSegments.isEmpty()) {
+            throw new FileNotFoundException("Invalid URI: " + uri);
         }
-        throw new IllegalArgumentException("Invalid URI for openAssetFile: " + uri);
+
+        String fileName = pathSegments.get(pathSegments.size() - 1);
+        String identifier = pathSegments.size() >= 2 ? pathSegments.get(pathSegments.size() - 2) : "twitsticker_main";
+        if (identifier.equals(STICKERS_ASSET_PATH)) {
+            identifier = "twitsticker_main";
+        }
+
+        File packDir = packManager.getPackDir(identifier);
+        File file = new File(packDir, fileName);
+
+        if (file.exists() && file.length() > 0) {
+            ParcelFileDescriptor pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
+            return new AssetFileDescriptor(pfd, 0, file.length());
+        }
+
+        // If not found in internal packDir, check if it's a starter/tray asset and copy it
+        File copied = packManager.copyAssetToPackDirIfMissing(identifier, fileName);
+        if (copied != null && copied.exists() && copied.length() > 0) {
+            ParcelFileDescriptor pfd = ParcelFileDescriptor.open(copied, ParcelFileDescriptor.MODE_READ_ONLY);
+            return new AssetFileDescriptor(pfd, 0, copied.length());
+        }
+
+        // Fallback: try opening from app assets directly
+        try {
+            AssetManager am = Objects.requireNonNull(getContext()).getAssets();
+            return am.openFd(fileName);
+        } catch (IOException e) {
+            Log.e(TAG, "File not found: " + fileName + " in " + packDir.getAbsolutePath() + " or assets: " + e.getMessage());
+            throw new FileNotFoundException("Cannot find " + fileName + " in pack dir or assets");
+        }
+    }
+
+    @Nullable
+    @Override
+    public ParcelFileDescriptor openFile(@NonNull Uri uri, @NonNull String mode) throws FileNotFoundException {
+        Log.d(TAG, "openFile() requested: " + uri);
+        AssetFileDescriptor afd = openAssetFile(uri, mode);
+        if (afd != null) {
+            return afd.getParcelFileDescriptor();
+        }
+        throw new FileNotFoundException("Cannot open file: " + uri);
     }
 
     @Nullable
@@ -233,13 +253,12 @@ public class StickerContentProvider extends ContentProvider {
             case STICKERS_CODE:
                 return "vnd.android.cursor.dir/vnd." + AUTHORITY + "." + STICKERS_PATH;
             case STICKERS_ASSET_CODE:
+            default:
                 String last = uri.getLastPathSegment();
                 if (last != null && (last.endsWith(".png") || last.toLowerCase().contains("tray"))) {
                     return "image/png";
                 }
                 return "image/webp";
-            default:
-                throw new IllegalArgumentException("Unknown URI: " + uri);
         }
     }
 

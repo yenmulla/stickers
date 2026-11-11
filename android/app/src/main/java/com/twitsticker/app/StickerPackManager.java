@@ -46,6 +46,14 @@ public class StickerPackManager {
 
     private void initDefaultPackIfNeeded() {
         List<StickerPack> packs = getPacks();
+        File targetDir = getPackDir("twitsticker_main");
+
+        // Always overwrite starters and tray icon with the newly validated compliant assets
+        copyAssetToInternalStorage("tray.png", new File(targetDir, "tray.png"), true);
+        copyAssetToInternalStorage("starter1.webp", new File(targetDir, "starter1.webp"), true);
+        copyAssetToInternalStorage("starter2.webp", new File(targetDir, "starter2.webp"), true);
+        copyAssetToInternalStorage("starter3.webp", new File(targetDir, "starter3.webp"), true);
+
         if (packs.isEmpty()) {
             StickerPack defaultPack = new StickerPack(
                 "twitsticker_main",
@@ -54,11 +62,7 @@ public class StickerPackManager {
                 "tray.png"
             );
             defaultPack.animatedStickerPack = true;
-            File targetDir = getPackDir("twitsticker_main");
-            copyAssetToInternalStorage("tray.png", new File(targetDir, "tray.png"));
-            copyAssetToInternalStorage("starter1.webp", new File(targetDir, "starter1.webp"));
-            copyAssetToInternalStorage("starter2.webp", new File(targetDir, "starter2.webp"));
-            copyAssetToInternalStorage("starter3.webp", new File(targetDir, "starter3.webp"));
+            defaultPack.imageDataVersion = "2";
 
             defaultPack.stickers.add(new Sticker("starter1.webp", Arrays.asList("🔥", "✨")));
             defaultPack.stickers.add(new Sticker("starter2.webp", Arrays.asList("😂", "🎉")));
@@ -67,21 +71,23 @@ public class StickerPackManager {
             packs.add(defaultPack);
             savePacks(packs);
         } else {
-            // Ensure tray.png and starters exist for existing packs (migration check)
+            // Update existing packs to ensure tray.png and starters are valid
             boolean modified = false;
             for (StickerPack pack : packs) {
                 if (pack.trayImageFile == null || pack.trayImageFile.endsWith(".webp") || pack.trayImageFile.isEmpty()) {
                     pack.trayImageFile = "tray.png";
                     modified = true;
                 }
-                File targetDir = getPackDir(pack.identifier);
-                copyAssetToInternalStorage("tray.png", new File(targetDir, "tray.png"));
-                for (Sticker st : pack.stickers) {
-                    File sf = new File(targetDir, st.imageFileName);
-                    if (!sf.exists()) {
-                        copyAssetToInternalStorage(st.imageFileName, sf);
-                    }
+                // Bump image data version to bust WhatsApp's corrupt cache
+                if ("1".equals(pack.imageDataVersion)) {
+                    pack.imageDataVersion = "2";
+                    modified = true;
                 }
+                File pDir = getPackDir(pack.identifier);
+                copyAssetToInternalStorage("tray.png", new File(pDir, "tray.png"), true);
+                copyAssetToInternalStorage("starter1.webp", new File(pDir, "starter1.webp"), true);
+                copyAssetToInternalStorage("starter2.webp", new File(pDir, "starter2.webp"), true);
+                copyAssetToInternalStorage("starter3.webp", new File(pDir, "starter3.webp"), true);
             }
             if (modified) {
                 savePacks(packs);
@@ -124,6 +130,7 @@ public class StickerPackManager {
                     trayImg
                 );
                 pack.animatedStickerPack = obj.optBoolean("animatedStickerPack", true);
+                pack.imageDataVersion = obj.optString("imageDataVersion", "2");
                 pack.publisherEmail = obj.optString("publisherEmail", "");
                 pack.publisherWebsite = obj.optString("publisherWebsite", "");
 
@@ -164,6 +171,7 @@ public class StickerPackManager {
                 obj.put("publisher", pack.publisher);
                 obj.put("trayImageFile", pack.trayImageFile != null ? pack.trayImageFile : "tray.png");
                 obj.put("animatedStickerPack", pack.animatedStickerPack);
+                obj.put("imageDataVersion", pack.imageDataVersion != null ? pack.imageDataVersion : "2");
                 obj.put("publisherEmail", pack.publisherEmail);
                 obj.put("publisherWebsite", pack.publisherWebsite);
 
@@ -203,13 +211,15 @@ public class StickerPackManager {
         if (targetPack == null) {
             targetPack = new StickerPack(packId, packName, author, "tray.png");
             targetPack.animatedStickerPack = true;
-            copyAssetToInternalStorage("tray.png", new File(getPackDir(packId), "tray.png"));
+            targetPack.imageDataVersion = String.valueOf(System.currentTimeMillis());
+            copyAssetToInternalStorage("tray.png", new File(getPackDir(packId), "tray.png"), true);
             packs.add(targetPack);
         } else {
             targetPack.name = packName;
             targetPack.publisher = author;
             targetPack.trayImageFile = "tray.png";
-            copyAssetToInternalStorage("tray.png", new File(getPackDir(packId), "tray.png"));
+            targetPack.imageDataVersion = String.valueOf(System.currentTimeMillis());
+            copyAssetToInternalStorage("tray.png", new File(getPackDir(packId), "tray.png"), true);
         }
 
         // Copy file into target pack directory
@@ -232,11 +242,11 @@ public class StickerPackManager {
         targetPack.stickers.add(0, new Sticker(finalFileName, emojis));
 
         // WhatsApp requires 3 stickers minimum per pack!
-        // If pack has less than 3 stickers, ensure fallback starter stickers exist
+        // If pack has less than 3 stickers, ensure clean fallback starter stickers exist
         while (targetPack.stickers.size() < 3) {
             int idx = targetPack.stickers.size() + 1;
             String fallbackName = "starter" + idx + ".webp";
-            copyAssetToInternalStorage(fallbackName, new File(packDir, fallbackName));
+            copyAssetToInternalStorage(fallbackName, new File(packDir, fallbackName), true);
             targetPack.stickers.add(new Sticker(fallbackName, Arrays.asList("🔥", "✨")));
         }
 
@@ -263,11 +273,11 @@ public class StickerPackManager {
 
         // Pre-verify that tray.png and all stickers exist on disk in the pack directory
         File packDir = getPackDir(pack.identifier);
-        copyAssetToInternalStorage("tray.png", new File(packDir, "tray.png"));
+        copyAssetToInternalStorage("tray.png", new File(packDir, "tray.png"), false);
         for (Sticker s : pack.stickers) {
             File sf = new File(packDir, s.imageFileName);
             if (!sf.exists() || sf.length() == 0) {
-                copyAssetToInternalStorage(s.imageFileName, sf);
+                copyAssetToInternalStorage(s.imageFileName, sf, true);
             }
         }
 
@@ -297,7 +307,7 @@ public class StickerPackManager {
         File packDir = getPackDir(identifier);
         File dest = new File(packDir, fileName);
         if (!dest.exists() || dest.length() == 0) {
-            copyAssetToInternalStorage(fileName, dest);
+            copyAssetToInternalStorage(fileName, dest, true);
         }
         return dest.exists() ? dest : null;
     }
@@ -311,8 +321,8 @@ public class StickerPackManager {
         }
     }
 
-    private void copyAssetToInternalStorage(String assetName, File destFile) {
-        if (destFile.exists() && destFile.length() > 0) return;
+    private void copyAssetToInternalStorage(String assetName, File destFile, boolean force) {
+        if (!force && destFile.exists() && destFile.length() > 0) return;
         try (InputStream in = context.getAssets().open(assetName);
              OutputStream out = new FileOutputStream(destFile)) {
             byte[] buf = new byte[4096];
