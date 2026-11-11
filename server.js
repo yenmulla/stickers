@@ -128,6 +128,22 @@ app.post('/api/convert', upload.single('mediaFile'), async (req, res) => {
     const stickerUrl = `/stickers/${outputFilename}`;
     const downloadUrl = `/api/stickers/${stickerId}/download`;
     const packUrl = `/api/stickers/${stickerId}/pack`;
+    const shareUrl = `https://gifsticker.site/sticker/${stickerId}`;
+
+    // Persist sticker metadata for direct link sharing & info lookup
+    try {
+      const metaFile = path.join(STICKERS_DIR, `${stickerId}.json`);
+      fs.writeFileSync(metaFile, JSON.stringify({
+        stickerId,
+        sizeKb: result.sizeKb,
+        sizeBytes: result.sizeBytes,
+        isCompliant: result.isCompliant,
+        metadata,
+        createdAt: Date.now()
+      }));
+    } catch (metaErr) {
+      console.warn('Could not write metadata JSON:', metaErr);
+    }
 
     res.json({
       success: true,
@@ -135,6 +151,7 @@ app.post('/api/convert', upload.single('mediaFile'), async (req, res) => {
       url: stickerUrl,
       downloadUrl,
       packUrl,
+      shareUrl,
       sizeBytes: result.sizeBytes,
       sizeKb: result.sizeKb,
       isCompliant: result.isCompliant,
@@ -193,6 +210,78 @@ app.get('/api/stickers/:id/pack', (req, res) => {
 
   const readStream = fs.createReadStream(packPath);
   readStream.pipe(res);
+});
+
+// 3.2 Get Sticker Metadata for Shared Link
+app.get('/api/stickers/:id/info', (req, res) => {
+  const { id } = req.params;
+  const stickerPath = path.resolve(STICKERS_DIR, `${id}.webp`);
+  if (!fs.existsSync(stickerPath)) {
+    return res.status(404).json({ error: 'Sticker not found' });
+  }
+
+  const stat = fs.statSync(stickerPath);
+  const metaPath = path.resolve(STICKERS_DIR, `${id}.json`);
+  let metadata = { packName: 'Twitter Sticker', author: 'TwitSticker', emojis: ['🔥', '✨'] };
+  if (fs.existsSync(metaPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+      if (data.metadata) metadata = data.metadata;
+    } catch (e) {}
+  }
+
+  res.json({
+    success: true,
+    stickerId: id,
+    url: `/stickers/${id}.webp`,
+    downloadUrl: `/api/stickers/${id}/download`,
+    packUrl: `/api/stickers/${id}/pack`,
+    shareUrl: `https://gifsticker.site/sticker/${id}`,
+    sizeBytes: stat.size,
+    sizeKb: parseFloat((stat.size / 1024).toFixed(1)),
+    isCompliant: stat.size <= 500 * 1024,
+    metadata
+  });
+});
+
+// 3.3 Public Shareable Sticker Landing Page (Rich Social Meta & OpenGraph)
+app.get(['/sticker/:id', '/s/:id'], (req, res) => {
+  const { id } = req.params;
+  const stickerPath = path.resolve(STICKERS_DIR, `${id}.webp`);
+  if (!fs.existsSync(stickerPath)) {
+    return res.redirect('/?notfound=' + encodeURIComponent(id));
+  }
+
+  try {
+    let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
+    const absoluteStickerUrl = `https://gifsticker.site/stickers/${id}.webp`;
+    const shareUrl = `https://gifsticker.site/sticker/${id}`;
+
+    // Read metadata if available
+    const metaPath = path.resolve(STICKERS_DIR, `${id}.json`);
+    let title = 'WhatsApp Animated Sticker | TwitSticker';
+    let desc = 'Check out this animated WhatsApp sticker! Tap to view, download, or add directly to WhatsApp.';
+    if (fs.existsSync(metaPath)) {
+      try {
+        const info = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        if (info.metadata && info.metadata.packName) {
+          title = `${info.metadata.packName} - WhatsApp Sticker`;
+        }
+      } catch (e) {}
+    }
+
+    html = html.replace(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${title}">`);
+    html = html.replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${desc}">`);
+    html = html.replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${absoluteStickerUrl}">`);
+    html = html.replace(/<meta property="og:url" content="[^"]*">/, `<meta property="og:url" content="${shareUrl}">`);
+    html = html.replace(/<meta name="twitter:title" content="[^"]*">/, `<meta name="twitter:title" content="${title}">`);
+    html = html.replace(/<meta name="twitter:description" content="[^"]*">/, `<meta name="twitter:description" content="${desc}">`);
+    html = html.replace(/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${absoluteStickerUrl}">`);
+
+    res.send(html);
+  } catch (e) {
+    res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+  }
 });
 
 // 3.2 Download TwitSticker Android App (APK)

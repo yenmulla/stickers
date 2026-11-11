@@ -857,6 +857,15 @@ document.addEventListener('DOMContentLoaded', () => {
       downloadPackBtn.setAttribute('download', `whatsapp-sticker-pack-${result.stickerId.slice(0, 8)}.wastickers`);
     }
 
+    // Populate Share as Link input and WhatsApp share link
+    const shareUrl = `${window.location.origin}/sticker/${result.stickerId}`;
+    if (shareLinkInput) {
+      shareLinkInput.value = shareUrl;
+    }
+    if (shareWaLinkBtn) {
+      shareWaLinkBtn.href = `https://wa.me/?text=${encodeURIComponent(`Check out this animated WhatsApp sticker: ${shareUrl}`)}`;
+    }
+
     // Auto-sync into Android native pack in background so it's instantly available in the pack
     if (window.TwitStickerNative && window.TwitStickerNative.importStickerToPack) {
       window.TwitStickerNative.importStickerToPack(
@@ -938,6 +947,109 @@ document.addEventListener('DOMContentLoaded', () => {
       const waUrl = `https://wa.me/?text=${encodeURIComponent(`Check out my custom sticker: ${fullStickerUrl}`)}`;
       window.open(waUrl, '_blank');
     });
+  }
+
+  // ================= SHARE AS LINK HANDLER =================
+  const shareLinkInput = document.getElementById('shareLinkInput');
+  const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
+  const copyShareLinkText = document.getElementById('copyShareLinkText');
+  const shareWaLinkBtn = document.getElementById('shareWaLinkBtn');
+  const sharedStickerNotice = document.getElementById('sharedStickerNotice');
+  const createOwnFromSharedBtn = document.getElementById('createOwnFromSharedBtn');
+
+  if (copyShareLinkBtn) {
+    copyShareLinkBtn.addEventListener('click', async () => {
+      if (!state.lastResult) return;
+      const shareUrl = `${window.location.origin}/sticker/${state.lastResult.stickerId}`;
+
+      const triggerCopied = () => {
+        if (copyShareLinkText) copyShareLinkText.textContent = 'Copied!';
+        if (copyShareLinkBtn) {
+          copyShareLinkBtn.classList.remove('bg-emerald-500', 'hover:bg-emerald-400');
+          copyShareLinkBtn.classList.add('bg-white', 'text-slate-950');
+        }
+        setTimeout(() => {
+          if (copyShareLinkText) copyShareLinkText.textContent = 'Copy Link';
+          if (copyShareLinkBtn) {
+            copyShareLinkBtn.classList.remove('bg-white', 'text-slate-950');
+            copyShareLinkBtn.classList.add('bg-emerald-500', 'hover:bg-emerald-400');
+          }
+        }, 2200);
+      };
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'WhatsApp Animated Sticker',
+            text: 'Check out this animated WhatsApp sticker!',
+            url: shareUrl
+          });
+          return;
+        } catch (e) {
+          // Native share cancelled or failed, copy to clipboard instead
+        }
+      }
+
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        triggerCopied();
+      } catch (err) {
+        if (shareLinkInput) {
+          shareLinkInput.select();
+          document.execCommand('copy');
+          triggerCopied();
+        }
+      }
+    });
+  }
+
+  if (createOwnFromSharedBtn) {
+    createOwnFromSharedBtn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (tweetUrlInput) {
+        tweetUrlInput.value = '';
+        tweetUrlInput.focus();
+      }
+    });
+  }
+
+  // ================= SHARED STICKER AUTO-LOAD ON PAGE LOAD =================
+  const pathParts = window.location.pathname.split('/').filter(Boolean);
+  const searchParams = new URLSearchParams(window.location.search);
+  let sharedStickerId = null;
+
+  if ((pathParts[0] === 'sticker' || pathParts[0] === 's') && pathParts[1]) {
+    sharedStickerId = pathParts[1];
+  } else if (searchParams.get('sticker') || searchParams.get('s')) {
+    sharedStickerId = searchParams.get('sticker') || searchParams.get('s');
+  }
+
+  if (sharedStickerId) {
+    loadSharedSticker(sharedStickerId);
+  }
+
+  async function loadSharedSticker(id) {
+    try {
+      const res = await fetch(`/api/stickers/${id}/info`);
+      if (!res.ok) throw new Error('Sticker not found');
+      const data = await res.json();
+      state.lastResult = data;
+      displayResult(data);
+      if (sharedStickerNotice) sharedStickerNotice.classList.remove('hidden');
+    } catch (e) {
+      console.warn('Could not load shared sticker from server, trying fallback:', e);
+      const fallbackData = {
+        stickerId: id,
+        url: `/stickers/${id}.webp`,
+        downloadUrl: `/api/stickers/${id}/download`,
+        packUrl: `/api/stickers/${id}/pack`,
+        sizeKb: '120.0',
+        metadata: { packName: 'Twitter Sticker', author: 'TwitSticker' }
+      };
+      state.lastResult = fallbackData;
+      displayResult(fallbackData);
+      if (sharedStickerNotice) sharedStickerNotice.classList.remove('hidden');
+    }
   }
 
   // ================= STICKER HISTORY MODAL HANDLERS =================
