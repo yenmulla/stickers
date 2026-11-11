@@ -605,6 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Synchronized Trimmer Looper
   function enforceLoop(video) {
+    if (!video) return;
     video.addEventListener('timeupdate', () => {
       const loopEnd = state.startTime + state.trimDuration;
       if (video.currentTime >= loopEnd || video.currentTime < state.startTime) {
@@ -612,8 +613,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  enforceLoop(sourceVideoDirect);
-  enforceLoop(sourceVideoBubble);
+  if (sourceVideoDirect) enforceLoop(sourceVideoDirect);
+  if (sourceVideoBubble) enforceLoop(sourceVideoBubble);
 
   // Update Trim Labels
   function updateTrimLabels() {
@@ -632,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
     trimDurationLabel.textContent = `${len.toFixed(1)}s`;
 
     sourceVideoDirect.currentTime = start;
-    sourceVideoBubble.currentTime = start;
+    if (sourceVideoBubble) sourceVideoBubble.currentTime = start;
   }
 
   trimStartSlider.addEventListener('input', updateTrimLabels);
@@ -677,8 +678,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const spd = parseFloat(btn.dataset.speed);
       state.speed = spd;
-      sourceVideoDirect.playbackRate = spd;
-      sourceVideoBubble.playbackRate = spd;
+      if (sourceVideoDirect) sourceVideoDirect.playbackRate = spd;
+      if (sourceVideoBubble) sourceVideoBubble.playbackRate = spd;
     });
   });
 
@@ -762,65 +763,89 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ================= CONVERT PROCESS =================
-  convertBtn.addEventListener('click', async () => {
-    hideError();
-    convertBtn.disabled = true;
-    convertBtn.classList.add('opacity-50', 'pointer-events-none');
-    conversionProgress.classList.remove('hidden');
+  if (convertBtn) {
+    convertBtn.addEventListener('click', async () => {
+      hideError();
 
-    progressStatusText.textContent = 'Formatting to 512x512 WebP & compressing...';
-
-    const formData = new FormData();
-    formData.append('startTime', state.startTime);
-    formData.append('duration', state.trimDuration);
-    formData.append('fps', state.fps);
-    formData.append('fitMode', state.fitMode);
-    formData.append('speed', state.speed);
-    formData.append('packName', metaPackName.value.trim() || 'Twitter Sticker');
-    formData.append('author', metaAuthor.value.trim() || 'Twitter Sticker Maker');
-    formData.append('emojis', metaEmojis.value.trim() || '😂, 🔥');
-
-    if (state.currentSourceType === 'file' && state.localFile) {
-      formData.append('mediaFile', state.localFile);
-    } else {
-      formData.append('videoUrl', state.videoUrl);
-    }
-
-    try {
-      const res = await fetch('/api/convert', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to convert media to WhatsApp sticker');
+      // Guard: Ensure media is present. If URL input has text, trigger fetch first.
+      if (!state.videoUrl && !state.localFile) {
+        const enteredUrl = tweetUrlInput ? tweetUrlInput.value.trim() : '';
+        if (enteredUrl && fetchBtn) {
+          fetchBtn.click();
+          return;
+        }
+        showError('No Media Loaded', 'Please enter a Twitter/X link, upload a video, or select a sample first.');
+        return;
       }
 
-      state.lastResult = data;
-      displayResult(data);
-      saveToHistory(data);
-    } catch (err) {
-      showError('Conversion Failed', err.message);
-    } finally {
-      convertBtn.disabled = false;
-      convertBtn.classList.remove('opacity-50', 'pointer-events-none');
-      conversionProgress.classList.add('hidden');
-    }
-  });
+      convertBtn.disabled = true;
+      convertBtn.classList.add('opacity-50', 'pointer-events-none');
+      if (conversionProgress) conversionProgress.classList.remove('hidden');
+
+      if (progressStatusText) {
+        progressStatusText.textContent = 'Formatting to 512x512 WebP & compressing...';
+      }
+
+      const formData = new FormData();
+      formData.append('startTime', state.startTime || 0);
+      formData.append('duration', state.trimDuration || 3.0);
+      formData.append('fps', state.fps || 14);
+      formData.append('fitMode', state.fitMode || 'fit');
+      formData.append('speed', state.speed || 1.0);
+      formData.append('packName', (metaPackName && metaPackName.value.trim()) || 'Twitter Sticker');
+      formData.append('author', (metaAuthor && metaAuthor.value.trim()) || 'Twitter Sticker Maker');
+      formData.append('emojis', (metaEmojis && metaEmojis.value.trim()) || '😂, 🔥');
+
+      if (state.currentSourceType === 'file' && state.localFile) {
+        formData.append('mediaFile', state.localFile);
+      } else {
+        formData.append('videoUrl', state.videoUrl);
+      }
+
+      try {
+        const res = await fetch('/api/convert', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to convert media to WhatsApp sticker');
+        }
+
+        state.lastResult = data;
+        displayResult(data);
+        saveToHistory(data);
+      } catch (err) {
+        showError('Conversion Failed', err.message);
+      } finally {
+        convertBtn.disabled = false;
+        convertBtn.classList.remove('opacity-50', 'pointer-events-none');
+        if (conversionProgress) conversionProgress.classList.add('hidden');
+      }
+    });
+  }
 
   const downloadStickerBtnMobile = document.getElementById('downloadStickerBtnMobile');
 
   function displayResult(result) {
+    if (!result) return;
+
     // Add cache buster so animated WebP always restarts freshly
-    finalStickerImg.src = `${result.url}?t=${Date.now()}`;
+    if (finalStickerImg) {
+      finalStickerImg.src = `${result.url}?t=${Date.now()}`;
+    }
     if (finalStickerBubbleImg) {
       finalStickerBubbleImg.src = `${result.url}?t=${Date.now()}`;
     }
-    finalSizeBadge.textContent = `${result.sizeKb} KB`;
+    if (finalSizeBadge) {
+      finalSizeBadge.textContent = `${result.sizeKb} KB`;
+    }
 
-    downloadStickerBtn.href = result.downloadUrl;
-    downloadStickerBtn.setAttribute('download', `whatsapp-sticker-${result.stickerId.slice(0, 8)}.webp`);
+    if (downloadStickerBtn) {
+      downloadStickerBtn.href = result.downloadUrl;
+      downloadStickerBtn.setAttribute('download', `whatsapp-sticker-${result.stickerId.slice(0, 8)}.webp`);
+    }
 
     if (downloadStickerBtnMobile) {
       downloadStickerBtnMobile.href = result.downloadUrl;
@@ -849,62 +874,71 @@ document.addEventListener('DOMContentLoaded', () => {
       tabSendMobile.click();
     }
 
-    resultSection.classList.remove('hidden');
-    resultSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (resultSection) {
+      resultSection.classList.remove('hidden');
+      resultSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 
     if (window.lucide) window.lucide.createIcons();
   }
 
   // ================= WHATSAPP INTEGRATION & QR =================
-  showQrBtn.addEventListener('click', () => {
-    if (!state.lastResult) return;
-    const fullStickerUrl = `${window.location.origin}${state.lastResult.url}`;
-    
-    qrcodeBox.innerHTML = '';
-    new QRCode(qrcodeBox, {
-      text: fullStickerUrl,
-      width: 190,
-      height: 190,
-      colorDark: '#000000',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-
-    qrModal.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-  });
-
-  closeQrModal.addEventListener('click', () => qrModal.classList.add('hidden'));
-  doneQrBtn.addEventListener('click', () => qrModal.classList.add('hidden'));
-
-  shareWaBtn.addEventListener('click', async () => {
-    if (!state.lastResult) return;
-    const fullStickerUrl = `${window.location.origin}${state.lastResult.url}`;
-
-    // If mobile Web Share API is available with files support
-    if (navigator.share) {
-      try {
-        const response = await fetch(state.lastResult.url);
-        const blob = await response.blob();
-        const file = new File([blob], 'sticker.webp', { type: 'image/webp' });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'WhatsApp Sticker',
-            text: 'Here is your custom Twitter sticker!'
-          });
-          return;
-        }
-      } catch (e) {
-        console.log('Native file share skipped or cancelled');
+  if (showQrBtn) {
+    showQrBtn.addEventListener('click', () => {
+      if (!state.lastResult) return;
+      const fullStickerUrl = `${window.location.origin}${state.lastResult.url}`;
+      
+      if (qrcodeBox) {
+        qrcodeBox.innerHTML = '';
+        new QRCode(qrcodeBox, {
+          text: fullStickerUrl,
+          width: 190,
+          height: 190,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
       }
-    }
 
-    // Fallback: Open WhatsApp with sticker download link
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(`Check out my custom sticker: ${fullStickerUrl}`)}`;
-    window.open(waUrl, '_blank');
-  });
+      if (qrModal) qrModal.classList.remove('hidden');
+      if (window.lucide) window.lucide.createIcons();
+    });
+  }
+
+  if (closeQrModal) closeQrModal.addEventListener('click', () => qrModal && qrModal.classList.add('hidden'));
+  if (doneQrBtn) doneQrBtn.addEventListener('click', () => qrModal && qrModal.classList.add('hidden'));
+
+  const shareWaBtn = document.getElementById('shareWaBtn');
+  if (shareWaBtn) {
+    shareWaBtn.addEventListener('click', async () => {
+      if (!state.lastResult) return;
+      const fullStickerUrl = `${window.location.origin}${state.lastResult.url}`;
+
+      // If mobile Web Share API is available with files support
+      if (navigator.share) {
+        try {
+          const response = await fetch(state.lastResult.url);
+          const blob = await response.blob();
+          const file = new File([blob], 'sticker.webp', { type: 'image/webp' });
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'WhatsApp Sticker',
+              text: 'Here is your custom Twitter sticker!'
+            });
+            return;
+          }
+        } catch (e) {
+          console.log('Native file share skipped or cancelled');
+        }
+      }
+
+      // Fallback: Open WhatsApp with sticker download link
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(`Check out my custom sticker: ${fullStickerUrl}`)}`;
+      window.open(waUrl, '_blank');
+    });
+  }
 
   // ================= STICKER HISTORY MODAL HANDLERS =================
   viewHistoryBtn.addEventListener('click', () => {
