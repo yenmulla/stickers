@@ -191,19 +191,32 @@ async function resolveMedia(inputUrl) {
   try {
     const info = await extractWithYtDlp(url);
 
-    // Pick best format: prefer mp4, resolution <= 720p (perfect for 512x512 sticker)
+    // Pick best format: prefer direct progressive MP4, resolution <= 720p (avoids unplayable m3u8 playlists on mobile)
     let videoUrl = info.url;
     if (info.formats && info.formats.length > 0) {
-      // Filter for mp4 formats with video
-      const mp4s = info.formats.filter(f => f.ext === 'mp4' && f.vcodec !== 'none' && f.url);
-      if (mp4s.length > 0) {
+      // 1. Direct progressive MP4 streams that mobile browsers can play natively
+      const directMp4s = info.formats.filter(f => 
+        f.ext === 'mp4' && 
+        f.vcodec !== 'none' && 
+        f.url && 
+        !f.url.includes('.m3u8') && 
+        (!f.protocol || f.protocol === 'http' || f.protocol === 'https')
+      );
+
+      if (directMp4s.length > 0) {
         // Find format closest to 512px height/width
-        const sorted = mp4s.sort((a, b) => {
+        const sorted = directMp4s.sort((a, b) => {
           const resA = Math.abs((a.height || 480) - 512);
           const resB = Math.abs((b.height || 480) - 512);
           return resA - resB;
         });
         videoUrl = sorted[0].url;
+      } else {
+        // 2. Any other mp4 format
+        const otherMp4s = info.formats.filter(f => f.ext === 'mp4' && f.vcodec !== 'none' && f.url);
+        if (otherMp4s.length > 0) {
+          videoUrl = otherMp4s[0].url;
+        }
       }
     }
 

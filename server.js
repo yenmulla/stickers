@@ -90,58 +90,68 @@ app.get('/api/proxy-media', (req, res) => {
   }
 
   const client = parsed.protocol === 'https:' ? https : http;
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Accept': '*/*'
-  };
-
-  if (parsed.hostname.includes('twimg.com') || parsed.hostname.includes('twitter.com') || parsed.hostname.includes('x.com')) {
-    headers['Referer'] = 'https://twitter.com/';
-  }
-
-  if (req.headers.range) {
-    headers['Range'] = req.headers.range;
-  }
-
-  const proxyReq = client.request(mediaUrl, { method: 'GET', headers }, proxyRes => {
-    if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
-      let nextUrl = proxyRes.headers.location;
-      if (!nextUrl.startsWith('http')) {
-        nextUrl = new URL(nextUrl, mediaUrl).toString();
-      }
-      return res.redirect(`/api/proxy-media?url=${encodeURIComponent(nextUrl)}`);
-    }
-
-    const responseHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Range, Origin, Content-Type, Accept',
-      'Content-Type': proxyRes.headers['content-type'] || 'video/mp4',
-      'Accept-Ranges': 'bytes'
+  function makeProxyRequest(withReferer) {
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Accept': '*/*'
     };
 
-    if (proxyRes.headers['content-range']) {
-      responseHeaders['Content-Range'] = proxyRes.headers['content-range'];
-    }
-    if (proxyRes.headers['content-length']) {
-      responseHeaders['Content-Length'] = proxyRes.headers['content-length'];
+    if (withReferer && (parsed.hostname.includes('twimg.com') || parsed.hostname.includes('twitter.com') || parsed.hostname.includes('x.com'))) {
+      headers['Referer'] = 'https://twitter.com/';
     }
 
-    res.writeHead(proxyRes.statusCode, responseHeaders);
-    proxyRes.pipe(res);
-  });
-
-  proxyReq.on('error', err => {
-    console.error('Proxy media error:', err.message);
-    if (!res.headersSent) {
-      res.status(502).send('Failed to proxy media');
+    if (req.headers.range) {
+      headers['Range'] = req.headers.range;
     }
-  });
 
-  req.on('close', () => {
-    proxyReq.destroy();
-  });
+    const proxyReq = client.request(mediaUrl, { method: 'GET', headers }, proxyRes => {
+      // Follow redirects
+      if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+        let nextUrl = proxyRes.headers.location;
+        if (!nextUrl.startsWith('http')) {
+          nextUrl = new URL(nextUrl, mediaUrl).toString();
+        }
+        return res.redirect(`/api/proxy-media?url=${encodeURIComponent(nextUrl)}`);
+      }
 
-  proxyReq.end();
+      // Retry without Referer if 403 Forbidden
+      if (proxyRes.statusCode === 403 && withReferer) {
+        return makeProxyRequest(false);
+      }
+
+      const responseHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Range, Origin, Content-Type, Accept',
+        'Content-Type': proxyRes.headers['content-type'] || 'video/mp4',
+        'Accept-Ranges': 'bytes'
+      };
+
+      if (proxyRes.headers['content-range']) {
+        responseHeaders['Content-Range'] = proxyRes.headers['content-range'];
+      }
+      if (proxyRes.headers['content-length']) {
+        responseHeaders['Content-Length'] = proxyRes.headers['content-length'];
+      }
+
+      res.writeHead(proxyRes.statusCode, responseHeaders);
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', err => {
+      console.error('Proxy media error:', err.message);
+      if (!res.headersSent) {
+        res.status(502).send('Failed to proxy media');
+      }
+    });
+
+    req.on('close', () => {
+      proxyReq.destroy();
+    });
+
+    proxyReq.end();
+  }
+
+  makeProxyRequest(true);
 });
 
 // 2. Convert to WhatsApp sticker

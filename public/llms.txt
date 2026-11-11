@@ -22,3 +22,4 @@
 - Max Size: Under 500 KB total file size
 - Frame Rate: Optimized 9-16 FPS
 - Max Duration: 3.5 seconds recommended for smooth infinite loop
+

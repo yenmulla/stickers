@@ -30,55 +30,94 @@ function getFfmpegPath() {
 }
 
 /**
- * Downloads a remote URL to a local temporary file with standard browser headers
+ * Downloads a remote URL to a local temporary file with browser headers & FFmpeg fallback
  */
 function downloadRemoteToLocal(url, targetPath) {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(targetPath);
-    const client = url.startsWith('https') ? https : http;
+    function tryNodeDownload(withReferer) {
+      const file = fs.createWriteStream(targetPath);
+      const client = url.startsWith('https') ? https : http;
 
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      'Accept': '*/*'
-    };
+      const headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': '*/*'
+      };
 
-    if (url.includes('twimg.com') || url.includes('twitter.com') || url.includes('x.com')) {
-      headers['Referer'] = 'https://twitter.com/';
-    }
-
-    const req = client.get(url, { headers }, res => {
-      // Follow redirects
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        file.close();
-        let nextUrl = res.headers.location;
-        if (!nextUrl.startsWith('http')) {
-          nextUrl = new URL(nextUrl, url).toString();
-        }
-        return downloadRemoteToLocal(nextUrl, targetPath).then(resolve).catch(reject);
+      if (withReferer && (url.includes('twimg.com') || url.includes('twitter.com') || url.includes('x.com'))) {
+        headers['Referer'] = 'https://twitter.com/';
       }
 
-      if (res.statusCode !== 200) {
+      const req = client.get(url, { headers }, res => {
+        // Follow redirects
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          file.close();
+          try { fs.unlinkSync(targetPath); } catch (e) {}
+          let nextUrl = res.headers.location;
+          if (!nextUrl.startsWith('http')) {
+            nextUrl = new URL(nextUrl, url).toString();
+          }
+          return downloadRemoteToLocal(nextUrl, targetPath).then(resolve).catch(reject);
+        }
+
+        // Retry without Referer if 403 Forbidden
+        if (res.statusCode === 403 && withReferer) {
+          file.close();
+          try { fs.unlinkSync(targetPath); } catch (e) {}
+          return tryNodeDownload(false);
+        }
+
+        if (res.statusCode !== 200 && res.statusCode !== 206) {
+          file.close();
+          try { fs.unlinkSync(targetPath); } catch (e) {}
+          return tryFfmpegDownload(new Error(`HTTP ${res.statusCode}`));
+        }
+
+        res.pipe(file);
+        file.on('finish', () => {
+          file.close(() => {
+            // Verify file has non-zero size
+            try {
+              const stats = fs.statSync(targetPath);
+              if (stats.size > 1024) {
+                return resolve(targetPath);
+              }
+            } catch (e) {}
+            tryFfmpegDownload(new Error('Downloaded file too small'));
+          });
+        });
+      });
+
+      req.on('error', err => {
         file.close();
         try { fs.unlinkSync(targetPath); } catch (e) {}
-        return reject(new Error(`Failed to download remote video: HTTP ${res.statusCode}`));
-      }
-
-      res.pipe(file);
-      file.on('finish', () => {
-        file.close(() => resolve(targetPath));
+        tryFfmpegDownload(err);
       });
-    });
 
-    req.on('error', err => {
-      file.close();
-      try { fs.unlinkSync(targetPath); } catch (e) {}
-      reject(err);
-    });
+      req.setTimeout(25000, () => {
+        req.destroy();
+        file.close();
+        try { fs.unlinkSync(targetPath); } catch (e) {}
+        tryFfmpegDownload(new Error('Download timed out'));
+      });
+    }
 
-    req.setTimeout(25000, () => {
-      req.destroy();
-      reject(new Error('Download timed out'));
-    });
+    // Ultimate fallback: FFmpeg native HTTP/HLS streamer
+    function tryFfmpegDownload(origErr) {
+      console.warn(`Node download failed (${origErr.message}), falling back to FFmpeg native download for ${url.slice(0, 60)}...`);
+      try {
+        const bin = getFfmpegPath();
+        const headerArg = 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n';
+        execSync(`"${bin}" -y -headers "${headerArg}" -i "${url}" -c copy -t 15 "${targetPath}"`, { stdio: 'pipe' });
+        if (fs.existsSync(targetPath) && fs.statSync(targetPath).size > 1024) {
+          return resolve(targetPath);
+        }
+      } catch (ffErr) {
+        console.error('FFmpeg fallback download failed:', ffErr.message);
+      }
+      reject(origErr);
+    }
+
+    tryNodeDownload(true);
   });
 }
 

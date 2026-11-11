@@ -108,6 +108,48 @@ document.addEventListener('DOMContentLoaded', () => {
   const sourceImgBubble = document.getElementById('sourceImgBubble');
   const finalStickerBubbleImg = document.getElementById('finalStickerBubbleImg');
 
+  const videoPreviewBox = document.getElementById('videoPreviewBox');
+  const videoPlayPauseOverlay = document.getElementById('videoPlayPauseOverlay');
+  const playPauseIcon = document.getElementById('playPauseIcon');
+
+  function updatePlayPauseUI(isPlaying) {
+    if (!videoPlayPauseOverlay) return;
+    if (isPlaying) {
+      videoPlayPauseOverlay.classList.add('opacity-0', 'pointer-events-none');
+      videoPlayPauseOverlay.classList.remove('opacity-90', 'pointer-events-auto');
+    } else {
+      videoPlayPauseOverlay.classList.remove('opacity-0', 'pointer-events-none');
+      videoPlayPauseOverlay.classList.add('opacity-90', 'pointer-events-auto');
+    }
+  }
+
+  function toggleVideoPlayback() {
+    if (!sourceVideoDirect) return;
+    if (sourceVideoDirect.paused) {
+      sourceVideoDirect.play().then(() => updatePlayPauseUI(true)).catch(e => console.log('Play handled:', e));
+    } else {
+      sourceVideoDirect.pause();
+      updatePlayPauseUI(false);
+    }
+  }
+
+  if (sourceVideoDirect) {
+    sourceVideoDirect.addEventListener('play', () => updatePlayPauseUI(true));
+    sourceVideoDirect.addEventListener('pause', () => updatePlayPauseUI(false));
+    sourceVideoDirect.addEventListener('ended', () => updatePlayPauseUI(false));
+  }
+
+  if (videoPlayPauseOverlay) {
+    videoPlayPauseOverlay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleVideoPlayback();
+    });
+  }
+
+  if (videoPreviewBox) {
+    videoPreviewBox.addEventListener('click', toggleVideoPlayback);
+  }
+
   const bgCheckerBtn = document.getElementById('bgCheckerBtn');
   const bgDarkChatBtn = document.getElementById('bgDarkChatBtn');
   const bgLightChatBtn = document.getElementById('bgLightChatBtn');
@@ -175,49 +217,76 @@ document.addEventListener('DOMContentLoaded', () => {
     copyStickerClipboardBtn.addEventListener('click', async () => {
       if (!state.lastResult) return;
       
-      const originalText = copyBtnText.textContent;
-      copyBtnText.textContent = 'Copying Sticker...';
+      const originalText = copyBtnText ? copyBtnText.textContent : 'Copy WebP to Clipboard';
+      if (copyBtnText) copyBtnText.textContent = 'Copying...';
 
       try {
-        // Draw the current sticker onto an offscreen canvas and convert to PNG blob for clipboard
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = state.lastResult.url;
+        // Fetch raw animated WebP sticker
+        const res = await fetch(state.lastResult.url);
+        const webpBlob = await res.blob();
 
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-        });
+        let copied = false;
+        // Attempt 1: Modern Chromium clipboard image/webp
+        if (typeof ClipboardItem !== 'undefined') {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/webp': webpBlob })
+            ]);
+            copied = true;
+          } catch (webpErr) {
+            console.log('image/webp clipboard copy failed, attempting image/png fallback:', webpErr);
+          }
+        }
 
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, 512, 512);
-        ctx.drawImage(img, 0, 0, 512, 512);
+        // Attempt 2: Fallback to rendered canvas PNG
+        if (!copied) {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = state.lastResult.url;
 
-        canvas.toBlob(async (blob) => {
-          if (!blob) throw new Error('Could not render sticker blob');
-          await navigator.clipboard.write([
-            new ClipboardItem({ 'image/png': blob })
-          ]);
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+          });
 
-          copyBtnText.textContent = 'Copied! Press Ctrl+V in WhatsApp';
-          copyStickerClipboardBtn.classList.add('ring-2', 'ring-white');
+          const canvas = document.createElement('canvas');
+          canvas.width = 512;
+          canvas.height = 512;
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, 512, 512);
+          ctx.drawImage(img, 0, 0, 512, 512);
 
-          setTimeout(() => {
-            copyBtnText.textContent = originalText;
-            copyStickerClipboardBtn.classList.remove('ring-2', 'ring-white');
-          }, 3500);
-        }, 'image/png');
+          await new Promise((resolve, reject) => {
+            canvas.toBlob(async (blob) => {
+              try {
+                if (!blob) throw new Error('Could not render sticker blob');
+                await navigator.clipboard.write([
+                  new ClipboardItem({ 'image/png': blob })
+                ]);
+                resolve();
+              } catch (e) {
+                reject(e);
+              }
+            }, 'image/png');
+          });
+        }
+
+        if (copyBtnText) copyBtnText.textContent = 'WebP Copied! (Or drag file to chat)';
+        copyStickerClipboardBtn.classList.add('ring-2', 'ring-emerald-400');
+
+        setTimeout(() => {
+          if (copyBtnText) copyBtnText.textContent = originalText;
+          copyStickerClipboardBtn.classList.remove('ring-2', 'ring-emerald-400');
+        }, 3500);
 
       } catch (err) {
         console.error('Clipboard copy error:', err);
-        // Fallback: Copy direct sticker link
-        const fullStickerUrl = `${window.location.origin}${state.lastResult.url}`;
+        const fullStickerUrl = state.lastResult.shareUrl || getShareUrl(state.lastResult.stickerId);
         navigator.clipboard.writeText(fullStickerUrl);
-        copyBtnText.textContent = 'Link Copied! Open WhatsApp Web';
-        setTimeout(() => copyBtnText.textContent = originalText, 3000);
+        if (copyBtnText) copyBtnText.textContent = 'Link Copied! Open WhatsApp Web';
+        setTimeout(() => {
+          if (copyBtnText) copyBtnText.textContent = originalText;
+        }, 3000);
       }
     });
   }
@@ -559,10 +628,29 @@ document.addEventListener('DOMContentLoaded', () => {
       trimStartSlider.classList.remove('opacity-40');
       trimDurationSlider.classList.remove('opacity-40');
 
+      // Crucial for mobile Chrome autoplay: set defaultMuted & attributes
+      sourceVideoDirect.defaultMuted = true;
       sourceVideoDirect.muted = true;
-      if (sourceVideoBubble) sourceVideoBubble.muted = true;
       sourceVideoDirect.playsInline = true;
-      if (sourceVideoBubble) sourceVideoBubble.playsInline = true;
+      sourceVideoDirect.setAttribute('muted', '');
+      sourceVideoDirect.setAttribute('playsinline', '');
+      sourceVideoDirect.setAttribute('webkit-playsinline', '');
+      
+      if (sourceVideoBubble) {
+        sourceVideoBubble.defaultMuted = true;
+        sourceVideoBubble.muted = true;
+        sourceVideoBubble.playsInline = true;
+        sourceVideoBubble.setAttribute('muted', '');
+        sourceVideoBubble.setAttribute('playsinline', '');
+        sourceVideoBubble.setAttribute('webkit-playsinline', '');
+      }
+
+      // Set thumbnail poster so mobile browsers show the actual frame instead of a grey placeholder
+      const posterThumb = (state.mediaMetadata && state.mediaMetadata.thumbnail) || '';
+      if (posterThumb) {
+        sourceVideoDirect.poster = posterThumb;
+        if (sourceVideoBubble) sourceVideoBubble.poster = posterThumb;
+      }
 
       // Handle video error with graceful direct fallback
       sourceVideoDirect.onerror = () => {
@@ -579,8 +667,11 @@ document.addEventListener('DOMContentLoaded', () => {
       sourceVideoDirect.playbackRate = state.speed;
       if (sourceVideoBubble) sourceVideoBubble.playbackRate = state.speed;
 
-      sourceVideoDirect.play().catch(e => console.log('Autoplay handled:', e));
-      if (sourceVideoBubble) sourceVideoBubble.play().catch(e => console.log('Autoplay handled:', e));
+      sourceVideoDirect.play().catch(e => {
+        console.log('Mobile autoplay paused/restricted, showing tap-to-play button:', e);
+        updatePlayPauseUI(false);
+      });
+      if (sourceVideoBubble) sourceVideoBubble.play().catch(() => {});
 
       // Wait for video metadata
       const onMeta = () => {
