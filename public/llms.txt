@@ -1,0 +1,24 @@
+# TwitSticker (gifsticker.site)
+
+> Convert Twitter and X videos & GIFs into transparent animated WhatsApp stickers under 500 KB with 1 click.
+
+## Core Capabilities
+- **Twitter to WhatsApp Sticker Conversion**: Converts viral videos and animated GIFs from Twitter/X links into official 512x512 WebP animated stickers compliant with WhatsApp's strict file size limit (< 500 KB).
+- **Embedded WhatsApp EXIF Metadata**: Injects custom sticker pack name, publisher author, and emoji tags into the WebP container for native WhatsApp keyboard recognition.
+- **WhatsApp Web & Desktop Support**: Copy sticker directly to system clipboard to paste into WhatsApp Web (Ctrl+V) as a real transparent animated sticker.
+- **Android Native 1-Tap Add**: Includes companion Android app with ContentProvider integration to add packs directly to WhatsApp without third-party tools.
+- **Direct Sticker Sharing**: Every converted sticker generates a shareable link at `https://gifsticker.site/sticker/<id>` with rich OpenGraph preview cards for social messaging apps.
+
+## Key Links & Resources
+- [TwitSticker Home](https://gifsticker.site/): Web app and converter interface.
+- [Sitemap](https://gifsticker.site/sitemap.xml): XML sitemap for search crawlers.
+- [Robots](https://gifsticker.site/robots.txt): Crawler permissions and index directives.
+- [Ads.txt](https://gifsticker.site/ads.txt): Authorized digital sellers declaration.
+- [Android App APK](https://gifsticker.site/download/twitsticker.apk): Companion Android application for direct 1-tap WhatsApp installation.
+
+## Technical Specifications for WhatsApp Stickers
+- Resolution: Exactly 512x512 pixels
+- Format: Animated WebP (`image/webp`) with alpha transparency
+- Max Size: Under 500 KB total file size
+- Frame Rate: Optimized 9-16 FPS
+- Max Duration: 3.5 seconds recommended for smooth infinite loop

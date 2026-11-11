@@ -1,7 +1,26 @@
+# Allow major LLM and AI search crawlers (OpenAI, Google, Perplexity, Anthropic, Apple)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# General search crawlers (Googlebot, Bingbot, etc.)
 User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /uploads/
-Disallow: /download/
 
 Sitemap: https://gifsticker.site/sitemap.xml
