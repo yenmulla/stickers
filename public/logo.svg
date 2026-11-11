@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#0b1120" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Sticker Glow -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#25D366" flood-opacity="0.35" />
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#38bdf8" flood-opacity="0.25" />
+    </filter>
+
+    <!-- Inner Shadow for Peel -->
+    <filter id="peelShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="-4" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+
+    <!-- Sticker Body Gradient -->
+    <linearGradient id="stickerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="35%" stop-color="#0ea5e9" />
+      <stop offset="70%" stop-color="#22c55e" />
+      <stop offset="100%" stop-color="#25D366" />
+    </linearGradient>
+
+    <!-- Peel Fold Gradient -->
+    <linearGradient id="peelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e2e8f0" />
+      <stop offset="60%" stop-color="#cbd5e1" />
+      <stop offset="100%" stop-color="#94a3b8" />
+    </linearGradient>
+
+    <!-- Bubble Shine -->
+    <linearGradient id="bubbleShine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- App Icon Base Squircle -->
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="url(#bgGrad)" stroke="#1e293b" stroke-width="3" />
+
+  <!-- Outer Neon Edge Highlight -->
+  <rect x="18" y="18" width="476" height="476" rx="106" fill="none" stroke="url(#bubbleShine)" stroke-width="1.5" />
+
+  <!-- Subtle Ambient Glow Rings -->
+  <circle cx="256" cy="240" r="160" fill="#25D366" opacity="0.06" filter="blur(40px)" />
+  <circle cx="210" cy="190" r="120" fill="#38bdf8" opacity="0.08" filter="blur(30px)" />
+
+  <!-- Main Sticker Body with Peel-Off Top Right Corner -->
+  <g filter="url(#glow)">
+    <!-- Main Body Path with clipped top-right corner for peel effect -->
+    <path d="
+      M 140 100 
+      H 310 
+      L 396 186
+      V 352
+      C 396 385 369 412 336 412
+      H 140
+      C 107 412 80 385 80 352
+      V 160
+      C 80 127 107 100 140 100 
+      Z
+    " fill="url(#stickerGrad)" />
+
+    <!-- Corner Peel-Over Flap -->
+    <path d="
+      M 310 100 
+      L 396 186 
+      H 336
+      C 321.6 186 310 174.4 310 160
+      Z
+    " fill="url(#peelGrad)" filter="url(#peelShadow)" />
+  </g>
+
+  <!-- Specular Reflection on Sticker -->
+  <path d="
+    M 140 104
+    H 306
+    L 240 220
+    H 84
+    V 160
+    C 84 129 109 104 140 104
+    Z
+  " fill="url(#bubbleShine)" opacity="0.6" />
+
+  <!-- Playful Graphic inside Sticker: Chat Bubble + Tweet Bird Wing + Play Triangle -->
+  <!-- WhatsApp / Tweet Chat Bubble Tail -->
+  <path d="M 160 330 L 130 365 L 180 345 Z" fill="#ffffff" />
+
+  <!-- Main Speech Bubble Shape -->
+  <rect x="145" y="165" width="186" height="150" rx="36" fill="#ffffff" />
+
+  <!-- Inner Play / Wing Icon in Chat Bubble -->
+  <g transform="translate(195, 195) scale(0.9)">
+    <!-- Stylized dynamic X / Bird Wing / Play Arrow -->
+    <path d="
+      M 16 12 
+      L 78 46 
+      C 84 49 84 57 78 60 
+      L 16 94 
+      C 10 97 2 93 2 86 
+      L 2 20 
+      C 2 13 10 9 16 12 
+      Z
+    " fill="url(#stickerGrad)" />
+
+    <!-- Twitter Sparkle / Motion Notch -->
+    <path d="M 22 28 L 54 48 L 22 68 Z" fill="#ffffff" opacity="0.35" />
+  </g>
+
+  <!-- Sparkles / Animated Magic Stars -->
+  <!-- Top Left Sparkle -->
+  <path d="M 110 80 Q 110 105 85 105 Q 110 105 110 130 Q 110 105 135 105 Q 110 105 110 80 Z" fill="#38bdf8" />
+  <circle cx="110" cy="105" r="3" fill="#ffffff" />
+
+  <!-- Bottom Right Sparkle -->
+  <path d="M 405 320 Q 405 340 385 340 Q 405 340 405 360 Q 405 340 425 340 Q 405 340 405 320 Z" fill="#25D366" />
+  <circle cx="405" cy="340" r="2.5" fill="#ffffff" />
+
+  <!-- Tiny Accent Star -->
+  <polygon points="415,220 419,230 430,232 422,239 425,250 415,244 405,250 408,239 400,232 411,230" fill="#facc15" opacity="0.85" transform="scale(0.6) translate(280, 150)" />
+</svg>
+

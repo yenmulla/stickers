@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+  <defs>
+    <linearGradient id="favGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="60%" stop-color="#22c55e" />
+      <stop offset="100%" stop-color="#25D366" />
+    </linearGradient>
+    <linearGradient id="favPeel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#cbd5e1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Dark Base -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#0b1120" />
+
+  <!-- Sticker Shape with Fold -->
+  <path d="M 32 20 H 76 L 102 46 V 96 C 102 104 96 110 88 110 H 32 C 24 110 18 104 18 96 V 34 C 18 26 24 20 32 20 Z" fill="url(#favGrad)" />
+  <path d="M 76 20 L 102 46 H 84 C 79.5 46 76 42.5 76 38 Z" fill="url(#favPeel)" />
+
+  <!-- Chat bubble tail & body -->
+  <path d="M 36 82 L 28 92 L 42 86 Z" fill="#ffffff" />
+  <rect x="32" y="42" width="50" height="42" rx="10" fill="#ffffff" />
+
+  <!-- Play icon inside bubble -->
+  <polygon points="48,52 68,63 48,74" fill="#25D366" />
+
+  <!-- Sparkle dot -->
+  <circle cx="98" cy="88" r="4" fill="#25D366" />
+</svg>
+

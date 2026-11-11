@@ -38,6 +38,10 @@ android {
     buildFeatures {
         buildConfig true
     }
+    aaptOptions {
+        noCompress "webp"
+        noCompress "png"
+    }
 }
 
 dependencies {

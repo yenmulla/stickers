@@ -15,8 +15,6 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import org.json.JSONArray;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -33,7 +31,7 @@ public class StickerContentProvider extends ContentProvider {
     public static final String STICKERS_PATH = "stickers";
     public static final String STICKERS_ASSET_PATH = "stickers_asset";
 
-    // Column names defined by WhatsApp
+    // Column names defined by WhatsApp standard specification
     public static final String STICKER_PACK_IDENTIFIER_IN_QUERY = "sticker_pack_identifier";
     public static final String STICKER_PACK_NAME_IN_QUERY = "sticker_pack_name";
     public static final String STICKER_PACK_PUBLISHER_IN_QUERY = "sticker_pack_publisher";
@@ -49,19 +47,20 @@ public class StickerContentProvider extends ContentProvider {
     public static final String ANIMATED_STICKER_PACK = "animated_sticker_pack";
 
     public static final String STICKER_FILE_NAME_IN_QUERY = "sticker_file_name";
-    public static final String STICKER_PACK_ANIMATION_DATA_IN_QUERY = "sticker_pack_animation_data";
-    public static final String STICKER_EMOJIS_IN_QUERY = "sticker_emojis";
+    public static final String STICKER_FILE_EMOJI_IN_QUERY = "sticker_emoji";
 
     private static final int METADATA_CODE = 1;
-    private static final int STICKERS_CODE = 2;
-    private static final int STICKER_ASSET_CODE = 3;
+    private static final int METADATA_CODE_FOR_SINGLE_PACK = 2;
+    private static final int STICKERS_CODE = 3;
+    private static final int STICKERS_ASSET_CODE = 4;
 
     private static final UriMatcher MATCHER = new UriMatcher(UriMatcher.NO_MATCH);
 
     static {
         MATCHER.addURI(AUTHORITY, METADATA_PATH, METADATA_CODE);
+        MATCHER.addURI(AUTHORITY, METADATA_PATH + "/*", METADATA_CODE_FOR_SINGLE_PACK);
         MATCHER.addURI(AUTHORITY, STICKERS_PATH + "/*", STICKERS_CODE);
-        MATCHER.addURI(AUTHORITY, STICKERS_ASSET_PATH + "/*/*", STICKER_ASSET_CODE);
+        MATCHER.addURI(AUTHORITY, STICKERS_ASSET_PATH + "/*/*", STICKERS_ASSET_CODE);
     }
 
     private StickerPackManager packManager;
@@ -76,17 +75,20 @@ public class StickerContentProvider extends ContentProvider {
     @Override
     public Cursor query(@NonNull Uri uri, @Nullable String[] projection, @Nullable String selection, @Nullable String[] selectionArgs, @Nullable String sortOrder) {
         int code = MATCHER.match(uri);
-        if (code == METADATA_CODE) {
-            return getPackForAllPacks();
-        } else if (code == STICKERS_CODE) {
-            String identifier = uri.getLastPathSegment();
-            return getStickersForPack(identifier);
-        } else {
-            throw new IllegalArgumentException("Unknown URI: " + uri);
+        switch (code) {
+            case METADATA_CODE:
+                return getPackForAllPacks(uri);
+            case METADATA_CODE_FOR_SINGLE_PACK:
+                return getCursorForSinglePack(uri);
+            case STICKERS_CODE:
+                return getStickersForPack(uri);
+            default:
+                throw new IllegalArgumentException("Unknown URI: " + uri);
         }
     }
 
-    private Cursor getPackForAllPacks() {
+    @NonNull
+    private Cursor getStickerPackInfo(@NonNull Uri uri, @NonNull List<StickerPack> stickerPackList) {
         MatrixCursor cursor = new MatrixCursor(new String[]{
             STICKER_PACK_IDENTIFIER_IN_QUERY,
             STICKER_PACK_NAME_IN_QUERY,
@@ -103,48 +105,79 @@ public class StickerContentProvider extends ContentProvider {
             ANIMATED_STICKER_PACK
         });
 
-        List<StickerPack> packs = packManager.getPacks();
-        for (StickerPack pack : packs) {
+        for (StickerPack pack : stickerPackList) {
             MatrixCursor.RowBuilder builder = cursor.newRow();
             builder.add(pack.identifier);
             builder.add(pack.name);
             builder.add(pack.publisher);
             builder.add(pack.trayImageFile);
-            builder.add(pack.androidPlayStoreLink);
-            builder.add(pack.iosAppStoreLink);
-            builder.add(pack.publisherEmail);
-            builder.add(pack.publisherWebsite);
-            builder.add(pack.privacyPolicyWebsite);
-            builder.add(pack.licenseAgreementWebsite);
-            builder.add(pack.imageDataVersion);
+            builder.add(pack.androidPlayStoreLink != null ? pack.androidPlayStoreLink : "");
+            builder.add(pack.iosAppStoreLink != null ? pack.iosAppStoreLink : "");
+            builder.add(pack.publisherEmail != null ? pack.publisherEmail : "");
+            builder.add(pack.publisherWebsite != null ? pack.publisherWebsite : "");
+            builder.add(pack.privacyPolicyWebsite != null ? pack.privacyPolicyWebsite : "");
+            builder.add(pack.licenseAgreementWebsite != null ? pack.licenseAgreementWebsite : "");
+            builder.add(pack.imageDataVersion != null ? pack.imageDataVersion : "1");
             builder.add(pack.avoidCache ? 1 : 0);
             builder.add(pack.animatedStickerPack ? 1 : 0);
+        }
+
+        if (getContext() != null) {
+            cursor.setNotificationUri(getContext().getContentResolver(), uri);
         }
         return cursor;
     }
 
-    private Cursor getStickersForPack(String identifier) {
+    private Cursor getPackForAllPacks(@NonNull Uri uri) {
+        return getStickerPackInfo(uri, packManager.getPacks());
+    }
+
+    private Cursor getCursorForSinglePack(@NonNull Uri uri) {
+        String identifier = uri.getLastPathSegment();
+        List<StickerPack> packs = packManager.getPacks();
+        List<StickerPack> singlePackList = new ArrayList<>();
+        for (StickerPack pack : packs) {
+            if (pack.identifier.equals(identifier)) {
+                singlePackList.add(pack);
+                break;
+            }
+        }
+        if (singlePackList.isEmpty() && !packs.isEmpty()) {
+            singlePackList.add(packs.get(0));
+        }
+        return getStickerPackInfo(uri, singlePackList);
+    }
+
+    private Cursor getStickersForPack(@NonNull Uri uri) {
+        String identifier = uri.getLastPathSegment();
         MatrixCursor cursor = new MatrixCursor(new String[]{
             STICKER_FILE_NAME_IN_QUERY,
-            STICKER_PACK_ANIMATION_DATA_IN_QUERY,
-            STICKER_EMOJIS_IN_QUERY
+            STICKER_FILE_EMOJI_IN_QUERY
         });
 
         List<StickerPack> packs = packManager.getPacks();
+        StickerPack targetPack = null;
         for (StickerPack pack : packs) {
             if (pack.identifier.equals(identifier)) {
-                for (Sticker sticker : pack.stickers) {
-                    MatrixCursor.RowBuilder builder = cursor.newRow();
-                    builder.add(sticker.imageFileName);
-                    builder.add(null);
-                    JSONArray arr = new JSONArray();
-                    for (String em : sticker.emojis) {
-                        arr.put(em);
-                    }
-                    builder.add(arr.toString());
-                }
+                targetPack = pack;
                 break;
             }
+        }
+        if (targetPack == null && !packs.isEmpty()) {
+            targetPack = packs.get(0);
+        }
+
+        if (targetPack != null) {
+            for (Sticker sticker : targetPack.stickers) {
+                String emojiCsv = (sticker.emojis != null && !sticker.emojis.isEmpty())
+                    ? TextUtils.join(",", sticker.emojis)
+                    : "🔥,✨";
+                cursor.addRow(new Object[]{sticker.imageFileName, emojiCsv});
+            }
+        }
+
+        if (getContext() != null) {
+            cursor.setNotificationUri(getContext().getContentResolver(), uri);
         }
         return cursor;
     }
@@ -153,26 +186,36 @@ public class StickerContentProvider extends ContentProvider {
     @Override
     public AssetFileDescriptor openAssetFile(@NonNull Uri uri, @NonNull String mode) throws FileNotFoundException {
         int code = MATCHER.match(uri);
-        if (code == STICKER_ASSET_CODE) {
+        if (code == STICKERS_ASSET_CODE) {
             List<String> pathSegments = uri.getPathSegments();
+            if (pathSegments.size() < 3) {
+                throw new IllegalArgumentException("Path segments should be at least 3, uri is: " + uri);
+            }
             String identifier = pathSegments.get(pathSegments.size() - 2);
             String fileName = pathSegments.get(pathSegments.size() - 1);
 
             File packDir = packManager.getPackDir(identifier);
             File file = new File(packDir, fileName);
 
-            if (file.exists()) {
+            if (file.exists() && file.length() > 0) {
                 ParcelFileDescriptor pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY);
                 return new AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH);
             }
 
-            // Fallback: try opening from app assets if it's a starter asset
+            // If not found in internal packDir, check if it's a starter/tray asset and copy it
+            File copied = packManager.copyAssetToPackDirIfMissing(identifier, fileName);
+            if (copied != null && copied.exists() && copied.length() > 0) {
+                ParcelFileDescriptor pfd = ParcelFileDescriptor.open(copied, ParcelFileDescriptor.MODE_READ_ONLY);
+                return new AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH);
+            }
+
+            // Fallback: try opening from app assets directly
             try {
                 AssetManager am = Objects.requireNonNull(getContext()).getAssets();
                 return am.openFd(fileName);
             } catch (IOException e) {
-                Log.e(TAG, "File not found in assets either: " + fileName);
-                throw new FileNotFoundException("Cannot find " + fileName + " in pack or assets");
+                Log.e(TAG, "File not found: " + fileName + " in " + packDir.getAbsolutePath() + " or assets: " + e.getMessage());
+                throw new FileNotFoundException("Cannot find " + fileName + " in pack dir or assets");
             }
         }
         throw new IllegalArgumentException("Invalid URI for openAssetFile: " + uri);
@@ -185,9 +228,15 @@ public class StickerContentProvider extends ContentProvider {
         switch (code) {
             case METADATA_CODE:
                 return "vnd.android.cursor.dir/vnd." + AUTHORITY + "." + METADATA_PATH;
+            case METADATA_CODE_FOR_SINGLE_PACK:
+                return "vnd.android.cursor.item/vnd." + AUTHORITY + "." + METADATA_PATH;
             case STICKERS_CODE:
                 return "vnd.android.cursor.dir/vnd." + AUTHORITY + "." + STICKERS_PATH;
-            case STICKER_ASSET_CODE:
+            case STICKERS_ASSET_CODE:
+                String last = uri.getLastPathSegment();
+                if (last != null && (last.endsWith(".png") || last.toLowerCase().contains("tray"))) {
+                    return "image/png";
+                }
                 return "image/webp";
             default:
                 throw new IllegalArgumentException("Unknown URI: " + uri);
@@ -210,4 +259,3 @@ public class StickerContentProvider extends ContentProvider {
         throw new UnsupportedOperationException("Update not supported");
     }
 }
-
