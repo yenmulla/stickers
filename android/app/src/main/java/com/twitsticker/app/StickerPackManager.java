@@ -24,9 +24,9 @@ import java.util.List;
 
 public class StickerPackManager {
     private static final String TAG = "StickerPackManager";
-    public static final String EXTRA_STICKER_PACK_ID = "extra_sticker_pack_id";
-    public static final String EXTRA_STICKER_PACK_AUTHORITY = "extra_sticker_pack_authority";
-    public static final String EXTRA_STICKER_PACK_NAME = "extra_sticker_pack_name";
+    public static final String EXTRA_STICKER_PACK_ID = "sticker_pack_id";
+    public static final String EXTRA_STICKER_PACK_AUTHORITY = "sticker_pack_authority";
+    public static final String EXTRA_STICKER_PACK_NAME = "sticker_pack_name";
     public static final int ADD_PACK_REQUEST_CODE = 200;
 
     public static final String WHATSAPP_PACKAGE_NAME = "com.whatsapp";
