@@ -1,0 +1,8 @@
+node_modules/
+uploads/*
+!uploads/.gitkeep
+public/stickers/*
+!public/stickers/.gitkeep
+.DS_Store
+*.log
+test-*

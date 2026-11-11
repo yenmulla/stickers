@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <title>Twitter to WhatsApp Sticker Converter</title>
+  <meta name="description" content="Convert Twitter/X GIFs and videos into animated 512x512 WhatsApp stickers under 500KB with custom metadata.">
+  <meta name="theme-color" content="#0b0e14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- QRCode.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#0b0e14] text-slate-100 min-h-screen flex flex-col font-['Inter'] antialiased selection:bg-[#25D366] selection:text-black">
+
+  <!-- Glow background elements -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+    <div class="absolute -top-40 left-1/4 w-96 h-96 bg-[#1DA1F2]/10 rounded-full blur-[120px]"></div>
+    <div class="absolute top-60 right-1/4 w-96 h-96 bg-[#25D366]/10 rounded-full blur-[120px]"></div>
+  </div>
+
+  <!-- Navbar -->
+  <header class="border-b border-slate-800/80 bg-[#0d121c]/90 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-[#1DA1F2] to-[#25D366] flex items-center justify-center shadow-lg shadow-[#25D366]/20">
+          <i data-lucide="sparkles" class="w-4 h-4 sm:w-5 sm:h-5 text-white"></i>
+        </div>
+        <div>
+          <span class="font-['Outfit'] font-bold text-base sm:text-lg tracking-tight text-white flex items-center gap-1">
+            Twit<span class="text-[#25D366]">Sticker</span>
+            <span class="text-[9px] sm:text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">512px</span>
+          </span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-1.5 sm:space-x-3 text-xs">
+        <button id="networkAccessBtn" class="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition">
+          <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+          <span class="font-medium hidden sm:inline">Network Access</span>
+          <span class="sm:hidden font-medium text-[11px]">WiFi</span>
+        </button>
+        <div class="hidden lg:flex items-center space-x-2 text-slate-400 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>WhatsApp Spec: &lt; 500 KB</span>
+        </div>
+        <button id="viewHistoryBtn" class="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition border border-slate-700 text-slate-200">
+          <i data-lucide="history" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+          <span class="hidden sm:inline">My Stickers</span>
+          <span id="historyCountBadge" class="hidden px-1.5 py-0.2 rounded-full bg-[#25D366] text-black font-bold text-[10px]">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8 w-full">
+
+    <!-- Hero Title -->
+    <div class="text-center max-w-3xl mx-auto mb-4 sm:mb-8">
+      <h1 class="text-2xl sm:text-5xl font-['Outfit'] font-extrabold tracking-tight text-white mb-2 sm:mb-3">
+        Convert <span class="text-[#1DA1F2]">Twitter GIFs</span> to <span class="text-[#25D366]">WhatsApp Stickers</span>
+      </h1>
+      <p class="text-slate-400 text-xs sm:text-base leading-relaxed px-1">
+        Turn viral Twitter/X GIFs & videos into official 512×512 animated stickers under 500 KB with custom WhatsApp EXIF metadata.
+      </p>
+    </div>
+
+    <!-- Input Box Card -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 sm:p-6 shadow-2xl backdrop-blur-xl mb-6 sm:mb-8">
+      <!-- Tabs (Mobile Optimized Segmented Control) -->
+      <div class="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 mb-4 sm:mb-5 text-xs sm:text-sm">
+        <button id="tabLinkBtn" class="tab-btn active py-2 sm:py-2.5 px-2 flex items-center justify-center gap-1.5 rounded-lg font-semibold bg-slate-800 text-[#25D366] transition">
+          <i data-lucide="link" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Twitter / X Link</span>
+          <span class="sm:hidden">X Link</span>
+        </button>
+        <button id="tabUploadBtn" class="tab-btn py-2 sm:py-2.5 px-2 flex items-center justify-center gap-1.5 rounded-lg font-semibold text-slate-400 hover:text-slate-200 transition">
+          <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Upload File</span>
+          <span class="sm:hidden">Upload</span>
+        </button>
+        <button id="tabPresetBtn" class="tab-btn py-2 sm:py-2.5 px-2 flex items-center justify-center gap-1.5 rounded-lg font-semibold text-slate-400 hover:text-slate-200 transition">
+          <i data-lucide="play-square" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Quick Samples</span>
+          <span class="sm:hidden">Samples</span>
+        </button>
+      </div>
+
+      <!-- Tab 1: URL Input -->
+      <div id="tabLinkContent" class="space-y-4">
+        <form id="urlForm" class="flex flex-col sm:flex-row gap-3">
+          <div class="relative flex-1">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+              <i data-lucide="twitter" class="w-5 h-5 text-[#1DA1F2]"></i>
+            </div>
+            <input 
+              type="url" 
+              id="tweetUrlInput" 
+              placeholder="Paste Twitter/X post URL (e.g. https://x.com/username/status/...)" 
+              class="w-full pl-11 pr-20 py-3.5 rounded-xl bg-slate-950/70 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-[#25D366] focus:ring-1 focus:ring-[#25D366] transition text-sm font-normal shadow-inner"
+              required
+            >
+            <button 
+              type="button" 
+              id="pasteBtn" 
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-1 border border-slate-700"
+            >
+              <i data-lucide="clipboard" class="w-3.5 h-3.5"></i>
+              <span>Paste</span>
+            </button>
+          </div>
+          <button 
+            type="submit" 
+            id="fetchBtn" 
+            class="px-6 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] active:scale-[0.98] text-slate-950 font-semibold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/20 font-['Outfit']"
+          >
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            <span>Load Media</span>
+          </button>
+        </form>
+
+        <div class="flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2 pt-1">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>Supports standard X / Twitter posts, video tweets, and direct video links (.mp4/.gif).</span>
+          </div>
+          <button id="quickTryBtn" class="text-emerald-400 hover:underline flex items-center gap-1">
+            <span>Don't have a link? Try a sample</span>
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab 2: Upload File -->
+      <div id="tabUploadContent" class="hidden">
+        <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-[#25D366] rounded-xl p-8 text-center cursor-pointer transition bg-slate-950/40 hover:bg-slate-950/60 group">
+          <input type="file" id="fileInput" accept="video/mp4,video/webm,video/quicktime,image/gif,image/webp" class="hidden">
+          <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-slate-800/80 group-hover:bg-[#25D366]/10 flex items-center justify-center text-slate-400 group-hover:text-[#25D366] transition">
+            <i data-lucide="upload-cloud" class="w-7 h-7"></i>
+          </div>
+          <p class="text-sm font-medium text-slate-200 mb-1">Click to browse or drag and drop your media here</p>
+          <p class="text-xs text-slate-500">Supports GIF, MP4, WebM, MOV (Max 50MB)</p>
+        </div>
+      </div>
+
+      <!-- Tab 3: Presets -->
+      <div id="tabPresetContent" class="hidden">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="sampleCardsContainer">
+          <!-- Dynamically populated sample cards -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Alert Banner -->
+    <div id="errorAlert" class="hidden mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-start gap-3">
+      <i data-lucide="alert-circle" class="w-5 h-5 text-red-400 shrink-0 mt-0.5"></i>
+      <div class="flex-1">
+        <p class="font-semibold text-red-200" id="errorTitle">Extraction Failed</p>
+        <p id="errorMessage" class="text-xs text-red-300/90 mt-0.5"></p>
+      </div>
+      <button id="closeErrorBtn" class="text-red-400 hover:text-red-200">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- Studio / Customizer Area (Visible after media loaded) -->
+    <div id="studioSection" class="hidden space-y-8 animate-fadeIn">
+      
+      <!-- Loaded Media Header info -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-[#1DA1F2]/20 flex items-center justify-center text-[#1DA1F2]">
+            <i data-lucide="video" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 id="mediaTitleDisplay" class="font-medium text-sm text-slate-100 truncate max-w-sm sm:max-w-md">Tweet Video Loaded</h3>
+            <p id="mediaAuthorDisplay" class="text-xs text-slate-500">@author • Duration: <span id="durationDisplay">3.0s</span></p>
+          </div>
+        </div>
+        <button id="resetMediaBtn" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition flex items-center gap-1">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          <span>Change</span>
+        </button>
+      </div>
+
+      <!-- 2-Column Editor Layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left: Preview Canvas & WhatsApp Chat Mockup (5 Cols) -->
+        <div class="lg:col-span-5 flex flex-col items-center">
+          <div class="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col items-center">
+            
+            <!-- Preview Controls Bar -->
+            <div class="w-full flex items-center justify-between mb-3 text-xs">
+              <span class="font-semibold text-slate-400 flex items-center gap-1.5">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                <span>Sticker Preview</span>
+              </span>
+              <!-- Background / Environment Switcher -->
+              <div class="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 text-[11px]">
+                <button id="bgCheckerBtn" class="px-2 py-0.5 rounded bg-slate-800 text-white font-medium">Transparent</button>
+                <button id="bgDarkChatBtn" class="px-2 py-0.5 rounded text-slate-400 hover:text-white">Dark WA</button>
+                <button id="bgLightChatBtn" class="px-2 py-0.5 rounded text-slate-400 hover:text-white">Light WA</button>
+              </div>
+            </div>
+
+            <!-- WhatsApp Chat Preview Box (512x512 aspect container) -->
+            <div id="previewContainer" class="preview-box w-full max-w-[280px] sm:max-w-[360px] aspect-square rounded-2xl flex items-center justify-center relative overflow-hidden shadow-2xl checkerboard-bg transition-colors duration-200">
+              
+              <!-- Chat Bubble Wrapper (Visible when in Dark/Light WA mode) -->
+              <div id="chatBubble" class="hidden absolute right-3 bottom-3 sm:right-4 sm:bottom-4 p-2 rounded-2xl max-w-[85%] shadow-lg">
+                <!-- Sticker Media inside bubble -->
+                <div class="w-40 h-40 sm:w-56 sm:h-56 relative flex items-center justify-center">
+                  <video id="sourceVideoBubble" class="w-full h-full object-contain pointer-events-none" autoplay loop muted playsinline></video>
+                  <img id="sourceImgBubble" class="w-full h-full object-contain pointer-events-none hidden" alt="Sticker Preview">
+                </div>
+                <!-- Bubble Meta: Time & Checkmarks -->
+                <div class="flex items-center justify-end gap-1 text-[10px] text-slate-400/80 mt-1 font-sans">
+                  <span>12:45 PM</span>
+                  <span class="text-[#53bdeb]">✓✓</span>
+                </div>
+              </div>
+
+              <!-- Default Canvas / Media (Transparent Mode) -->
+              <div id="directVideoWrapper" class="w-full h-full p-2 flex items-center justify-center relative">
+                <video id="sourceVideoDirect" class="w-full h-full object-contain" autoplay loop muted playsinline></video>
+                <img id="sourceImgDirect" class="w-full h-full object-contain hidden" alt="Sticker Preview">
+                <!-- 512px dimension guideline overlay -->
+                <div class="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm text-[10px] font-mono text-emerald-400 border border-emerald-500/20">
+                  512 × 512 px
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Sticker Spec Badge -->
+            <div class="mt-4 w-full grid grid-cols-3 gap-2 text-center text-xs">
+              <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
+                <span class="text-[10px] text-slate-500 block">Dimensions</span>
+                <span class="font-bold text-slate-200">512 × 512</span>
+              </div>
+              <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
+                <span class="text-[10px] text-slate-500 block">Format</span>
+                <span class="font-bold text-[#25D366]">WebP (Anim)</span>
+              </div>
+              <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800">
+                <span class="text-[10px] text-slate-500 block">WhatsApp Cap</span>
+                <span class="font-bold text-emerald-400">&lt; 500 KB</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Right: Studio Controls (7 Cols) -->
+        <div class="lg:col-span-7 space-y-5">
+          
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
+            
+            <!-- Trimmer Timeline Section -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <i data-lucide="scissors" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  <span>Trim Video / Sticker Duration</span>
+                </label>
+                <span class="text-xs font-mono text-emerald-400 font-medium">
+                  <span id="trimStartLabel">0.0s</span> - <span id="trimEndLabel">3.5s</span> (<span id="trimDurationLabel">3.5s</span>)
+                </span>
+              </div>
+
+              <!-- Trimmer Timeline Sliders -->
+              <div class="space-y-2 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                <div class="flex items-center gap-3">
+                  <span class="text-[11px] text-slate-400 w-10">Start:</span>
+                  <input type="range" id="trimStartSlider" min="0" max="10" step="0.1" value="0" class="custom-range flex-1">
+                  <span id="trimStartVal" class="text-xs font-mono text-slate-300 w-10 text-right">0.0s</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-[11px] text-slate-400 w-10">Length:</span>
+                  <input type="range" id="trimDurationSlider" min="0.5" max="5.0" step="0.1" value="3.0" class="custom-range flex-1">
+                  <span id="trimDurationVal" class="text-xs font-mono text-slate-300 w-10 text-right">3.0s</span>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-1.5">Tip: 2.0s to 3.5s loops provide the best animated sticker quality on WhatsApp.</p>
+            </div>
+
+            <!-- Framing & Fit Mode -->
+            <div>
+              <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mb-2">
+                <i data-lucide="crop" class="w-3.5 h-3.5 text-blue-400"></i>
+                <span>Fit Mode (512x512 Canvas)</span>
+              </label>
+              <div class="grid grid-cols-2 gap-3">
+                <button type="button" id="fitModePad" class="fit-btn active p-3 rounded-xl border border-[#25D366] bg-emerald-500/10 text-left transition flex items-start gap-2.5">
+                  <i data-lucide="minimize-2" class="w-4 h-4 text-emerald-400 mt-0.5"></i>
+                  <div>
+                    <span class="text-xs font-semibold text-white block">Fit with Transparency</span>
+                    <span class="text-[10px] text-slate-400">Preserves entire GIF aspect ratio with transparent edges</span>
+                  </div>
+                </button>
+                <button type="button" id="fitModeCrop" class="fit-btn p-3 rounded-xl border border-slate-800 bg-slate-950 text-left transition flex items-start gap-2.5 hover:border-slate-700">
+                  <i data-lucide="maximize" class="w-4 h-4 text-slate-400 mt-0.5"></i>
+                  <div>
+                    <span class="text-xs font-semibold text-white block">Square Crop (Fill)</span>
+                    <span class="text-[10px] text-slate-400">Fills the full 512x512 square without borders</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Speed & Framerate -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Playback Speed -->
+              <div>
+                <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mb-2">
+                  <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+                  <span>Playback Speed</span>
+                </label>
+                <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <button type="button" data-speed="0.75" class="speed-btn flex-1 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white transition">0.75x</button>
+                  <button type="button" data-speed="1.0" class="speed-btn active flex-1 py-1.5 text-xs rounded-lg bg-slate-800 text-white font-semibold transition">1.0x</button>
+                  <button type="button" data-speed="1.25" class="speed-btn flex-1 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white transition">1.25x</button>
+                  <button type="button" data-speed="1.5" class="speed-btn flex-1 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white transition">1.5x</button>
+                </div>
+              </div>
+
+              <!-- Frame Rate (FPS) -->
+              <div>
+                <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mb-2">
+                  <i data-lucide="film" class="w-3.5 h-3.5 text-purple-400"></i>
+                  <span>Frame Rate (FPS)</span>
+                </label>
+                <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                  <button type="button" data-fps="10" class="fps-btn flex-1 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white transition">10 fps</button>
+                  <button type="button" data-fps="14" class="fps-btn active flex-1 py-1.5 text-xs rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-semibold transition">14 fps</button>
+                  <button type="button" data-fps="16" class="fps-btn flex-1 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white transition">16 fps</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- WhatsApp Sticker Metadata (EXIF) Collapsible -->
+            <div class="border border-slate-800 rounded-xl overflow-hidden">
+              <button type="button" id="toggleMetaBtn" class="w-full px-4 py-2.5 bg-slate-950 flex items-center justify-between text-xs font-semibold text-slate-300 hover:text-white">
+                <span class="flex items-center gap-2">
+                  <i data-lucide="tag" class="w-3.5 h-3.5 text-[#25D366]"></i>
+                  <span>Sticker Pack Metadata (WhatsApp EXIF)</span>
+                </span>
+                <i data-lucide="chevron-down" id="metaChevron" class="w-4 h-4 transition-transform"></i>
+              </button>
+              
+              <div id="metaFields" class="hidden p-4 bg-slate-950/40 border-t border-slate-800 space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="text-[11px] text-slate-400 block mb-1">Sticker Pack Name</label>
+                    <input type="text" id="metaPackName" value="Twitter Memes" class="w-full px-3 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-[#25D366]">
+                  </div>
+                  <div>
+                    <label class="text-[11px] text-slate-400 block mb-1">Publisher / Author</label>
+                    <input type="text" id="metaAuthor" value="@TwitterSticker" class="w-full px-3 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-[#25D366]">
+                  </div>
+                </div>
+                <div>
+                  <label class="text-[11px] text-slate-400 block mb-1">Associated Emojis</label>
+                  <input type="text" id="metaEmojis" value="😂, 🔥, 🚀" class="w-full px-3 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-[#25D366]">
+                </div>
+              </div>
+            </div>
+
+            <!-- Big Glowing Convert Button -->
+            <button 
+              type="button" 
+              id="convertBtn" 
+              class="w-full py-4 rounded-xl bg-gradient-to-r from-[#20ba59] to-[#25D366] hover:from-[#1ea850] hover:to-[#22c35e] text-slate-950 font-['Outfit'] font-bold text-base shadow-xl shadow-[#25D366]/20 transition-all flex items-center justify-center gap-2.5 active:scale-[0.99]"
+            >
+              <i data-lucide="sparkles" class="w-5 h-5 text-slate-950"></i>
+              <span>Generate WhatsApp Sticker</span>
+            </button>
+
+            <!-- Conversion Progress Overlay / Spinner (hidden by default) -->
+            <div id="conversionProgress" class="hidden p-4 rounded-xl bg-slate-950 border border-emerald-500/30 flex items-center gap-3">
+              <div class="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+              <div class="text-xs flex-1">
+                <span class="font-semibold text-emerald-300 block" id="progressStatusText">Converting video to 512x512 WebP...</span>
+                <span class="text-slate-500">Auto-optimizing compression for WhatsApp &lt; 500 KB compliance</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Output / Download Modal or Card -->
+    <div id="resultSection" class="hidden my-8 animate-fadeIn">
+      <div class="bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-emerald-500/50 rounded-2xl p-5 sm:p-8 shadow-2xl relative overflow-hidden">
+        
+        <!-- Header banner -->
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-6 pb-4 border-b border-slate-800">
+          <div class="flex items-center gap-2.5">
+            <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 font-['Outfit']">WhatsApp Animated Sticker Ready</span>
+          </div>
+          <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1">
+            <i data-lucide="check" class="w-3 h-3"></i>
+            <span>Sends as True Sticker (Not Photo / Not GIF)</span>
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          <!-- Left: Sticker Output Box & Live WhatsApp Preview -->
+          <div class="lg:col-span-4 flex flex-col items-center">
+            <div class="w-56 h-56 rounded-2xl p-2 bg-slate-950/90 border border-emerald-500/30 shadow-2xl checkerboard-bg relative flex items-center justify-center">
+              <img id="finalStickerImg" src="" alt="WhatsApp Sticker Output" class="w-full h-full object-contain">
+              <span class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-[10px] tracking-wide">
+                512×512
+              </span>
+            </div>
+
+            <!-- Size Badge -->
+            <div class="mt-3 flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-mono font-semibold" id="finalSizeBadge">
+                124.5 KB
+              </span>
+              <span class="text-xs text-slate-400">/ 500 KB WhatsApp limit</span>
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            
+            <p class="text-[11px] text-slate-500 text-center mt-2">
+              Embedded WhatsApp EXIF metadata: Pack, Author & Emojis
+            </p>
+          </div>
+
+          <!-- Right: How to Send as Sticker Action Hub -->
+          <div class="lg:col-span-8 space-y-5">
+            <div>
+              <h2 class="text-2xl font-['Outfit'] font-bold text-white">How would you like to send this sticker?</h2>
+              <p class="text-xs text-slate-400 mt-1">To ensure WhatsApp sends this as a <strong>real transparent sticker</strong> (instead of a photo or GIF), choose your device below:</p>
+            </div>
+
+            <!-- Platform Switcher Tabs -->
+            <div class="flex gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs font-semibold">
+              <button type="button" id="tabSendWeb" class="flex-1 py-2 px-3 rounded-lg bg-slate-800 text-white flex items-center justify-center gap-1.5 transition">
+                <i data-lucide="monitor" class="w-4 h-4 text-[#25D366]"></i>
+                <span>WhatsApp Web / Desktop</span>
+              </button>
+              <button type="button" id="tabSendMobile" class="flex-1 py-2 px-3 rounded-lg text-slate-400 hover:text-white flex items-center justify-center gap-1.5 transition">
+                <i data-lucide="smartphone" class="w-4 h-4 text-[#25D366]"></i>
+                <span>iPhone & Android</span>
+              </button>
+            </div>
+
+            <!-- Panel 1: WhatsApp Web / Desktop (Fastest clipboard & drag) -->
+            <div id="panelSendWeb" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                
+                <!-- Primary Action: Copy to Clipboard -->
+                <button 
+                  type="button" 
+                  id="copyStickerClipboardBtn" 
+                  class="p-4 rounded-xl bg-gradient-to-r from-[#20ba59] to-[#25D366] hover:from-[#1ea850] hover:to-[#22c35e] text-slate-950 font-['Outfit'] font-bold text-sm shadow-xl shadow-[#25D366]/20 transition flex flex-col items-center justify-center text-center gap-1 active:scale-[0.98]"
+                >
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="copy" class="w-5 h-5 text-slate-950"></i>
+                    <span class="text-base" id="copyBtnText">Copy Sticker to Clipboard</span>
+                  </div>
+                  <span class="text-[11px] font-normal opacity-90">Paste with Ctrl+V into WhatsApp Web &rarr; Sent as Sticker!</span>
+                </button>
+
+                <!-- Secondary Action: Open WhatsApp Web -->
+                <a 
+                  id="openWaWebBtn" 
+                  href="https://web.whatsapp.com" 
+                  target="_blank" 
+                  class="p-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-['Outfit'] font-semibold text-sm border border-slate-700 transition flex flex-col items-center justify-center text-center gap-1"
+                >
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="external-link" class="w-5 h-5 text-[#25D366]"></i>
+                    <span class="text-base">Open WhatsApp Web</span>
+                  </div>
+                  <span class="text-[11px] text-slate-400">Launch web.whatsapp.com in new tab</span>
+                </a>
+              </div>
+
+              <!-- Download Button for Drag & Drop -->
+              <div class="flex flex-wrap gap-3 items-center pt-1">
+                <a 
+                  id="downloadStickerBtn" 
+                  href="#" 
+                  download="whatsapp-sticker.webp" 
+                  class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white font-medium text-xs transition flex items-center gap-2 border border-slate-700"
+                >
+                  <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+                  <span>Download .webp Sticker</span>
+                </a>
+                <span class="text-xs text-slate-400">
+                  Tip: Drag & drop the downloaded <code class="text-emerald-400">.webp</code> file straight into any WhatsApp chat window!
+                </span>
+              </div>
+
+              <!-- Visual Mockup & Instructions Card for WhatsApp Web -->
+              <div class="bg-slate-950/80 p-4 rounded-xl border border-emerald-500/30 text-xs text-slate-300 space-y-3">
+                <span class="font-bold text-emerald-400 flex items-center gap-1.5 text-sm">
+                  <i data-lucide="help-circle" class="w-4 h-4"></i>
+                  <span>Exactly Where to Find the Sticker Feature in WhatsApp Web:</span>
+                </span>
+
+                <!-- Diagram / Visual Flow -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  <!-- Method A: Drag & Drop (Foolproof) -->
+                  <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 flex flex-col justify-between">
+                    <div>
+                      <span class="inline-block px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold uppercase tracking-wider mb-1.5">Method 1 (Easiest — No Menus)</span>
+                      <h4 class="font-semibold text-white text-xs mb-1">Drag & Drop into Chat Window</h4>
+                      <p class="text-[11px] text-slate-400 leading-relaxed">
+                        Click <strong>"Download .webp Sticker"</strong> above, then drag the file directly with your mouse from your downloads bar onto any open chat in WhatsApp Web. WhatsApp will immediately pop up: <em>"Send as sticker"</em>!
+                      </p>
+                    </div>
+                    <div class="mt-3 p-2 bg-slate-950 rounded border border-dashed border-slate-700 text-center text-[10px] text-slate-500 flex items-center justify-center gap-1.5">
+                      <i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-emerald-400"></i>
+                      <span>Drop file anywhere in WhatsApp chat &rarr; Sticker!</span>
+                    </div>
+                  </div>
+
+                  <!-- Method B: WhatsApp's Built-in "+ Create" Button -->
+                  <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 flex flex-col justify-between">
+                    <div>
+                      <span class="inline-block px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[10px] font-bold uppercase tracking-wider mb-1.5">Method 2 (Using WhatsApp Menu)</span>
+                      <h4 class="font-semibold text-white text-xs mb-1">Where is the "Create Sticker" button?</h4>
+                      <div class="space-y-1 text-[11px] text-slate-400">
+                        <p>1. Open any chat on WhatsApp Web.</p>
+                        <p>2. Click the <strong>Emoji 🙂</strong> icon next to the message box.</p>
+                        <p>3. In the popup, click the <strong>Sticker 🏷️</strong> tab (third tab next to Emoji and GIF).</p>
+                        <p>4. Click the <strong>"+ Create"</strong> button &rarr; select this downloaded sticker!</p>
+                      </div>
+                    </div>
+                    <!-- Mockup toolbar illustration -->
+                    <div class="mt-3 p-2 bg-[#0b141a] rounded border border-slate-800 flex items-center justify-between text-[11px]">
+                      <div class="flex items-center gap-1.5 text-slate-400">
+                        <span class="px-1.5 py-0.5 rounded bg-slate-800 text-white font-medium">🙂 Emoji</span>
+                        <span class="px-1.5 py-0.5 rounded bg-slate-800 text-white font-medium">GIF</span>
+                        <span class="px-1.5 py-0.5 rounded bg-[#005c4b] text-emerald-300 font-bold border border-emerald-500/40">🏷️ Sticker</span>
+                      </div>
+                      <span class="px-2 py-0.5 rounded-full bg-[#25D366] text-black font-bold text-[10px] flex items-center gap-1">
+                        <span>+ Create</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel 2: Mobile (iPhone & Android) -->
+            <div id="panelSendMobile" class="hidden space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                
+                <!-- 1-Tap Sticker Pack (.wastickers) -->
+                <a 
+                  id="downloadPackBtn" 
+                  href="#" 
+                  class="p-4 rounded-xl bg-gradient-to-r from-emerald-600 to-[#25D366] hover:from-emerald-500 hover:to-[#22c35e] text-slate-950 font-['Outfit'] font-bold text-sm shadow-xl shadow-[#25D366]/20 transition flex flex-col items-center justify-center text-center gap-1 active:scale-[0.98]"
+                >
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="package" class="w-5 h-5 text-slate-950"></i>
+                    <span class="text-base">1. Download .wastickers Pack</span>
+                  </div>
+                  <span class="text-[11px] font-normal opacity-90">Auto-formatted pack ready for WhatsApp</span>
+                </a>
+
+                <!-- Open in Sticker Maker / Google Play helper -->
+                <a 
+                  id="playStoreBtn" 
+                  href="https://play.google.com/store/apps/details?id=com.marsvard.stickermakerforwhatsapp" 
+                  target="_blank" 
+                  class="p-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-['Outfit'] font-semibold text-sm border border-slate-700 transition flex flex-col items-center justify-center text-center gap-1"
+                >
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="play" class="w-5 h-5 text-[#25D366]"></i>
+                    <span class="text-base">2. Open "Sticker Maker"</span>
+                  </div>
+                  <span class="text-[11px] text-slate-400">Tap to get free importer from Google Play</span>
+                </a>
+              </div>
+
+              <!-- Quick Single File Download button -->
+              <div class="flex items-center justify-center sm:justify-start gap-3 pt-1">
+                <a 
+                  id="downloadStickerBtnMobile" 
+                  href="#" 
+                  download="whatsapp-sticker.webp" 
+                  class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700 flex items-center gap-1.5 transition"
+                >
+                  <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  <span>Or Download Raw .webp Sticker</span>
+                </a>
+                <button 
+                  type="button" 
+                  id="showQrBtn" 
+                  class="px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700 flex items-center gap-1.5 transition"
+                >
+                  <i data-lucide="qr-code" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  <span>QR Code</span>
+                </button>
+              </div>
+
+              <!-- Mobile Instructions -->
+              <div class="bg-slate-950/80 p-4 rounded-xl border border-emerald-500/30 text-xs text-slate-300 space-y-3">
+                <span class="font-bold text-emerald-400 flex items-center gap-1.5 text-sm">
+                  <i data-lucide="smartphone" class="w-4 h-4"></i>
+                  <span>How to Add to WhatsApp on Android (2 Methods):</span>
+                </span>
+
+                <div class="space-y-3 text-[11px] text-slate-400">
+                  
+                  <!-- Method 1: The standard Android way -->
+                  <div class="bg-slate-900/90 p-3.5 rounded-lg border border-emerald-500/20 space-y-1.5">
+                    <span class="inline-block px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold uppercase tracking-wider">Method 1 (Recommended — 100% Works on All Androids)</span>
+                    <h4 class="font-semibold text-white text-xs">Using the .wastickers file:</h4>
+                    <ol class="list-decimal list-inside space-y-1 leading-relaxed text-slate-300">
+                      <li>Tap the green <strong>"1. Download .wastickers Pack"</strong> button above.</li>
+                      <li>When download finishes, tap on it in your phone's notification bar.</li>
+                      <li>Select <strong>Sticker Maker</strong> to open it (if you don't have it, tap the Google Play button above to install it free).</li>
+                      <li>Inside the app, tap the green <strong>"ADD TO WHATSAPP"</strong> button at the bottom!</li>
+                      <li>Open WhatsApp &rarr; your animated sticker is now in your sticker keyboard permanently!</li>
+                    </ol>
+                  </div>
+
+                  <!-- Method 2: If your WhatsApp has the new Create button -->
+                  <div class="bg-slate-900/90 p-3.5 rounded-lg border border-slate-800 space-y-1.5">
+                    <span class="inline-block px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[10px] font-bold uppercase tracking-wider">Method 2 (If your WhatsApp is updated)</span>
+                    <h4 class="font-semibold text-white text-xs">Direct inside WhatsApp:</h4>
+                    <ol class="list-decimal list-inside space-y-1 leading-relaxed text-slate-400">
+                      <li>Tap <em>"Download Raw .webp Sticker"</em> above.</li>
+                      <li>Open any chat in WhatsApp &rarr; tap the <strong>Emoji 🙂</strong> icon next to the typing bar.</li>
+                      <li>At the bottom of the tray, tap the <strong>Sticker 🏷️</strong> icon (square with folded edge).</li>
+                      <li>Look for a <strong>"Create"</strong> tile or <strong>Pencil</strong> icon &rarr; select the downloaded sticker!</li>
+                    </ol>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- QR Code Modal (for phone scanning) -->
+    <div id="qrModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 modal-sheet">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl relative">
+        <button id="closeQrModal" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+        <div class="w-10 h-10 rounded-full bg-emerald-500/20 text-[#25D366] mx-auto flex items-center justify-center">
+          <i data-lucide="smartphone" class="w-5 h-5"></i>
+        </div>
+        <h3 class="font-['Outfit'] font-bold text-lg text-white">Scan with Your Phone</h3>
+        <p class="text-xs text-slate-400">Point your iPhone or Android camera at this code to open and save this sticker directly to WhatsApp on your mobile device.</p>
+        <div id="qrcodeBox" class="p-4 bg-white rounded-xl inline-block shadow-inner mx-auto"></div>
+        <button id="doneQrBtn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300">
+          Close
+        </button>
+      </div>
+    </div>
+
+    <!-- History Drawer / Modal -->
+    <div id="historyModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 modal-sheet">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-xl w-full text-left space-y-4 shadow-2xl relative max-h-[85vh] flex flex-col">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <h3 class="font-['Outfit'] font-bold text-lg text-white flex items-center gap-2">
+            <i data-lucide="history" class="w-5 h-5 text-[#25D366]"></i>
+            <span>Recently Converted Stickers</span>
+          </h3>
+          <button id="closeHistoryModal" class="text-slate-400 hover:text-white">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        
+        <div id="historyList" class="flex-1 overflow-y-auto space-y-3 pr-1">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+          <button id="clearHistoryBtn" class="text-red-400 hover:text-red-300">Clear All History</button>
+          <button id="closeHistoryBtn2" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Network Access Modal -->
+    <div id="networkModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 modal-sheet">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full text-center space-y-4 shadow-2xl relative">
+        <button id="closeNetworkModal" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+        <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-[#25D366] mx-auto flex items-center justify-center">
+          <i data-lucide="wifi" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="font-['Outfit'] font-bold text-xl text-white">Local Network Access</h3>
+          <p class="text-xs text-slate-400 mt-1">Anyone on your Wi-Fi or local network can access and use this sticker maker directly from their phone, tablet, or laptop!</p>
+        </div>
+
+        <!-- Network QR Code -->
+        <div class="p-3 bg-white rounded-xl inline-block shadow-inner mx-auto" id="networkQrBox"></div>
+
+        <!-- Direct URLs list -->
+        <div class="space-y-2 text-left" id="networkAddressesList">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-left text-xs text-slate-400 space-y-1">
+          <span class="font-semibold text-slate-300 flex items-center gap-1">
+            <i data-lucide="smartphone" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>Mobile Tip:</span>
+          </span>
+          <p>Scan the QR code above with your iPhone or Android camera to open this app directly on your phone and convert Twitter GIFs straight to WhatsApp stickers!</p>
+        </div>
+
+        <button id="doneNetworkBtn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200">
+          Close
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 py-6 mt-12 bg-slate-950/60 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center space-x-2">
+        <span class="font-bold text-slate-400">TwitSticker</span>
+        <span>•</span>
+        <span>Animated WhatsApp Stickers Maker</span>
+      </div>
+      <div>
+        <span>All conversions are processed locally on your machine with FFmpeg.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
+

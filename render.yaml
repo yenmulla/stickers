@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: twitsticker
+    env: docker
+    plan: free
+    healthCheckPath: /api/samples
+    autoDeploy: true

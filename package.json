@@ -1,0 +1,23 @@
+{
+  "name": "twitter-to-whatsapp-stickers",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "samples": "node generate-samples.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "adm-zip": "^0.6.1",
+    "archiver": "^8.0.0",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "ffmpeg-static": "^5.3.0",
+    "multer": "^2.5.0",
+    "twitter-downloader": "^1.1.8"
+  }
+}
