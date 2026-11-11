@@ -301,7 +301,7 @@
         <!-- Video Trim Player / Monitor -->
         <div class="flex flex-col items-center">
           <div class="w-full max-w-lg aspect-video max-h-64 sm:max-h-80 rounded-xl overflow-hidden bg-black/80 border border-slate-800 flex items-center justify-center relative shadow-lg">
-            <video id="sourceVideoDirect" class="w-full h-full object-contain" autoplay loop muted playsinline></video>
+            <video id="sourceVideoDirect" class="w-full h-full object-contain" autoplay loop muted playsinline webkit-playsinline preload="auto"></video>
             <img id="sourceImgDirect" class="w-full h-full object-contain hidden" alt="Source Preview">
             <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm text-[10px] font-mono text-emerald-400 border border-emerald-500/20">
               Source Video

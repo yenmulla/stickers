@@ -37,16 +37,24 @@ function downloadRemoteToLocal(url, targetPath) {
     const file = fs.createWriteStream(targetPath);
     const client = url.startsWith('https') ? https : http;
 
-    const req = client.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': '*/*'
-      }
-    }, res => {
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Accept': '*/*'
+    };
+
+    if (url.includes('twimg.com') || url.includes('twitter.com') || url.includes('x.com')) {
+      headers['Referer'] = 'https://twitter.com/';
+    }
+
+    const req = client.get(url, { headers }, res => {
       // Follow redirects
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         file.close();
-        return downloadRemoteToLocal(res.headers.location, targetPath).then(resolve).catch(reject);
+        let nextUrl = res.headers.location;
+        if (!nextUrl.startsWith('http')) {
+          nextUrl = new URL(nextUrl, url).toString();
+        }
+        return downloadRemoteToLocal(nextUrl, targetPath).then(resolve).catch(reject);
       }
 
       if (res.statusCode !== 200) {

@@ -5,6 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
+const http = require('http');
+const https = require('https');
 const { resolveMedia } = require('./services/twitterResolver');
 const { convertToSticker, MAX_WHATSAPP_SIZE } = require('./services/converter');
 
@@ -69,6 +71,79 @@ app.post('/api/extract', async (req, res) => {
   }
 });
 
+// 1.1 Media Proxy endpoint (bypasses Twitter CDN 403 hotlinking block for video/image previews)
+app.get('/api/proxy-media', (req, res) => {
+  const mediaUrl = req.query.url;
+  if (!mediaUrl || typeof mediaUrl !== 'string') {
+    return res.status(400).send('Missing url parameter');
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(mediaUrl);
+  } catch (e) {
+    return res.status(400).send('Invalid url');
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return res.status(400).send('Invalid protocol');
+  }
+
+  const client = parsed.protocol === 'https:' ? https : http;
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Accept': '*/*'
+  };
+
+  if (parsed.hostname.includes('twimg.com') || parsed.hostname.includes('twitter.com') || parsed.hostname.includes('x.com')) {
+    headers['Referer'] = 'https://twitter.com/';
+  }
+
+  if (req.headers.range) {
+    headers['Range'] = req.headers.range;
+  }
+
+  const proxyReq = client.request(mediaUrl, { method: 'GET', headers }, proxyRes => {
+    if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+      let nextUrl = proxyRes.headers.location;
+      if (!nextUrl.startsWith('http')) {
+        nextUrl = new URL(nextUrl, mediaUrl).toString();
+      }
+      return res.redirect(`/api/proxy-media?url=${encodeURIComponent(nextUrl)}`);
+    }
+
+    const responseHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Range, Origin, Content-Type, Accept',
+      'Content-Type': proxyRes.headers['content-type'] || 'video/mp4',
+      'Accept-Ranges': 'bytes'
+    };
+
+    if (proxyRes.headers['content-range']) {
+      responseHeaders['Content-Range'] = proxyRes.headers['content-range'];
+    }
+    if (proxyRes.headers['content-length']) {
+      responseHeaders['Content-Length'] = proxyRes.headers['content-length'];
+    }
+
+    res.writeHead(proxyRes.statusCode, responseHeaders);
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on('error', err => {
+    console.error('Proxy media error:', err.message);
+    if (!res.headersSent) {
+      res.status(502).send('Failed to proxy media');
+    }
+  });
+
+  req.on('close', () => {
+    proxyReq.destroy();
+  });
+
+  proxyReq.end();
+});
+
 // 2. Convert to WhatsApp sticker
 app.post('/api/convert', upload.single('mediaFile'), async (req, res) => {
   let tempUploadedFile = null;
@@ -80,6 +155,14 @@ app.post('/api/convert', upload.single('mediaFile'), async (req, res) => {
       tempUploadedFile = req.file.path;
     } else if (req.body.videoUrl) {
       inputSource = req.body.videoUrl;
+      // If client passed /api/proxy-media?url=..., extract the real target URL
+      if (inputSource.includes('/api/proxy-media?url=')) {
+        try {
+          const u = new URL(inputSource, 'http://localhost');
+          const unwrapped = u.searchParams.get('url');
+          if (unwrapped) inputSource = unwrapped;
+        } catch (e) {}
+      }
       // If local relative URL, map to absolute path
       if (inputSource.startsWith('/') && !inputSource.startsWith('//')) {
         inputSource = path.join(PUBLIC_DIR, inputSource);

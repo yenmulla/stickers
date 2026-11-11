@@ -523,6 +523,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isGifOrImg = url.match(/\.(gif|webp|png|jpe?g)(\?.*)?$/i) || (state.localFile && state.localFile.type.startsWith('image/'));
 
+    // Route external HTTP/HTTPS video through proxy to bypass Twitter CDN 403 hotlink block
+    const isRemoteHttp = url.startsWith('http://') || url.startsWith('https://');
+    const streamUrl = isRemoteHttp ? `/api/proxy-media?url=${encodeURIComponent(url)}` : url;
+
     if (isGifOrImg) {
       // Show image preview elements, hide video preview elements
       sourceVideoDirect.classList.add('hidden');
@@ -530,8 +534,8 @@ document.addEventListener('DOMContentLoaded', () => {
       sourceImgDirect.classList.remove('hidden');
       if (sourceImgBubble) sourceImgBubble.classList.remove('hidden');
 
-      sourceImgDirect.src = url;
-      if (sourceImgBubble) sourceImgBubble.src = url;
+      sourceImgDirect.src = streamUrl;
+      if (sourceImgBubble) sourceImgBubble.src = streamUrl;
 
       durationDisplay.textContent = 'Animated GIF Loop';
       trimStartSlider.disabled = true;
@@ -560,9 +564,17 @@ document.addEventListener('DOMContentLoaded', () => {
       sourceVideoDirect.playsInline = true;
       if (sourceVideoBubble) sourceVideoBubble.playsInline = true;
 
+      // Handle video error with graceful direct fallback
+      sourceVideoDirect.onerror = () => {
+        console.warn('Video proxy stream error, falling back to direct:', sourceVideoDirect.error);
+        if (sourceVideoDirect.src !== url) {
+          sourceVideoDirect.src = url;
+        }
+      };
+
       // Load into preview videos
-      sourceVideoDirect.src = url;
-      if (sourceVideoBubble) sourceVideoBubble.src = url;
+      sourceVideoDirect.src = streamUrl;
+      if (sourceVideoBubble) sourceVideoBubble.src = streamUrl;
 
       sourceVideoDirect.playbackRate = state.speed;
       if (sourceVideoBubble) sourceVideoBubble.playbackRate = state.speed;
