@@ -25,29 +25,34 @@ import java.util.Objects;
 public class StickerContentProvider extends ContentProvider {
     private static final String TAG = "StickerContentProvider";
 
-    public static final String AUTHORITY = BuildConfig.CONTENT_PROVIDER_AUTHORITY;
+    public static final String AUTHORITY = BuildConfig.CONTENT_PROVIDER_AUTHORITY != null 
+        ? BuildConfig.CONTENT_PROVIDER_AUTHORITY 
+        : "com.twitsticker.app.stickercontentprovider";
 
     public static final String METADATA_PATH = "metadata";
     public static final String STICKERS_PATH = "stickers";
     public static final String STICKERS_ASSET_PATH = "stickers_asset";
 
-    // Column names defined by WhatsApp standard specification
+    /**
+     * Exact column names mandated by WhatsApp specification
+     */
     public static final String STICKER_PACK_IDENTIFIER_IN_QUERY = "sticker_pack_identifier";
     public static final String STICKER_PACK_NAME_IN_QUERY = "sticker_pack_name";
     public static final String STICKER_PACK_PUBLISHER_IN_QUERY = "sticker_pack_publisher";
     public static final String STICKER_PACK_ICON_IN_QUERY = "sticker_pack_icon";
     public static final String ANDROID_APP_DOWNLOAD_LINK_IN_QUERY = "android_play_store_link";
-    public static final String IOS_APP_DOWNLOAD_LINK_IN_QUERY = "ios_app_store_link";
-    public static final String PUBLISHER_EMAIL = "publisher_email";
-    public static final String PUBLISHER_WEBSITE = "publisher_website";
-    public static final String PRIVACY_POLICY_WEBSITE = "privacy_policy_website";
-    public static final String LICENSE_AGREEMENT_WEBSITE = "license_agreement_website";
+    public static final String IOS_APP_DOWNLOAD_LINK_IN_QUERY = "ios_app_download_link";
+    public static final String PUBLISHER_EMAIL = "sticker_pack_publisher_email";
+    public static final String PUBLISHER_WEBSITE = "sticker_pack_publisher_website";
+    public static final String PRIVACY_POLICY_WEBSITE = "sticker_pack_privacy_policy_website";
+    public static final String LICENSE_AGREEMENT_WEBSITE = "sticker_pack_license_agreement_website";
     public static final String IMAGE_DATA_VERSION = "image_data_version";
-    public static final String AVOID_CACHE = "avoid_cache";
+    public static final String AVOID_CACHE = "whatsapp_will_not_cache_stickers";
     public static final String ANIMATED_STICKER_PACK = "animated_sticker_pack";
 
     public static final String STICKER_FILE_NAME_IN_QUERY = "sticker_file_name";
     public static final String STICKER_FILE_EMOJI_IN_QUERY = "sticker_emoji";
+    public static final String STICKER_FILE_ACCESSIBILITY_TEXT_IN_QUERY = "sticker_accessibility_text";
 
     private static final int METADATA_CODE = 1;
     private static final int METADATA_CODE_FOR_SINGLE_PACK = 2;
@@ -85,11 +90,14 @@ public class StickerContentProvider extends ContentProvider {
             case STICKERS_CODE:
                 return getStickersForPack(uri);
             default:
-                // Safe fallback for metadata or stickers
-                if (uri.toString().contains("/" + METADATA_PATH)) {
-                    return getCursorForSinglePack(uri);
-                } else if (uri.toString().contains("/" + STICKERS_PATH)) {
-                    return getStickersForPack(uri);
+                // Resilient fallback checking path segments
+                String path = uri.getPath();
+                if (path != null) {
+                    if (path.contains("/" + STICKERS_PATH)) {
+                        return getStickersForPack(uri);
+                    } else if (path.contains("/" + METADATA_PATH)) {
+                        return getCursorForSinglePack(uri);
+                    }
                 }
                 throw new IllegalArgumentException("Unknown URI: " + uri);
         }
@@ -97,6 +105,7 @@ public class StickerContentProvider extends ContentProvider {
 
     @NonNull
     private Cursor getStickerPackInfo(@NonNull Uri uri, @NonNull List<StickerPack> stickerPackList) {
+        // Includes WhatsApp standard column names AND historical aliases
         MatrixCursor cursor = new MatrixCursor(new String[]{
             STICKER_PACK_IDENTIFIER_IN_QUERY,
             STICKER_PACK_NAME_IN_QUERY,
@@ -110,7 +119,15 @@ public class StickerContentProvider extends ContentProvider {
             LICENSE_AGREEMENT_WEBSITE,
             IMAGE_DATA_VERSION,
             AVOID_CACHE,
-            ANIMATED_STICKER_PACK
+            ANIMATED_STICKER_PACK,
+            // Aliases for compatibility
+            "ios_app_store_link",
+            "publisher_email",
+            "publisher_website",
+            "privacy_policy_website",
+            "license_agreement_website",
+            "license_agreenment_website",
+            "avoid_cache"
         });
 
         for (StickerPack pack : stickerPackList) {
@@ -128,6 +145,15 @@ public class StickerContentProvider extends ContentProvider {
             builder.add(pack.imageDataVersion != null ? pack.imageDataVersion : "2");
             builder.add(pack.avoidCache ? 1 : 0);
             builder.add(pack.animatedStickerPack ? 1 : 0);
+
+            // Aliases
+            builder.add(pack.iosAppStoreLink != null ? pack.iosAppStoreLink : "");
+            builder.add(pack.publisherEmail != null ? pack.publisherEmail : "");
+            builder.add(pack.publisherWebsite != null ? pack.publisherWebsite : "");
+            builder.add(pack.privacyPolicyWebsite != null ? pack.privacyPolicyWebsite : "");
+            builder.add(pack.licenseAgreementWebsite != null ? pack.licenseAgreementWebsite : "");
+            builder.add(pack.licenseAgreementWebsite != null ? pack.licenseAgreementWebsite : "");
+            builder.add(pack.avoidCache ? 1 : 0);
         }
 
         if (getContext() != null) {
@@ -160,7 +186,8 @@ public class StickerContentProvider extends ContentProvider {
         String identifier = uri.getLastPathSegment();
         MatrixCursor cursor = new MatrixCursor(new String[]{
             STICKER_FILE_NAME_IN_QUERY,
-            STICKER_FILE_EMOJI_IN_QUERY
+            STICKER_FILE_EMOJI_IN_QUERY,
+            STICKER_FILE_ACCESSIBILITY_TEXT_IN_QUERY
         });
 
         List<StickerPack> packs = packManager.getPacks();
@@ -180,7 +207,11 @@ public class StickerContentProvider extends ContentProvider {
                 String emojiCsv = (sticker.emojis != null && !sticker.emojis.isEmpty())
                     ? TextUtils.join(",", sticker.emojis)
                     : "🔥,✨";
-                cursor.addRow(new Object[]{sticker.imageFileName, emojiCsv});
+                cursor.addRow(new Object[]{
+                    sticker.imageFileName,
+                    emojiCsv,
+                    sticker.accessibilityText != null ? sticker.accessibilityText : ""
+                });
             }
         }
 
@@ -244,22 +275,24 @@ public class StickerContentProvider extends ContentProvider {
     @Nullable
     @Override
     public String getType(@NonNull Uri uri) {
-        int code = MATCHER.match(uri);
-        switch (code) {
-            case METADATA_CODE:
-                return "vnd.android.cursor.dir/vnd." + AUTHORITY + "." + METADATA_PATH;
-            case METADATA_CODE_FOR_SINGLE_PACK:
-                return "vnd.android.cursor.item/vnd." + AUTHORITY + "." + METADATA_PATH;
-            case STICKERS_CODE:
-                return "vnd.android.cursor.dir/vnd." + AUTHORITY + "." + STICKERS_PATH;
-            case STICKERS_ASSET_CODE:
-            default:
-                String last = uri.getLastPathSegment();
-                if (last != null && (last.endsWith(".png") || last.toLowerCase().contains("tray"))) {
-                    return "image/png";
-                }
+        String path = uri.getPath();
+        if (path != null) {
+            if (path.endsWith("tray.png") || path.endsWith(".png")) {
+                return "image/png";
+            }
+            if (path.contains("/" + STICKERS_ASSET_PATH)) {
                 return "image/webp";
+            }
+            if (path.contains("/" + STICKERS_PATH)) {
+                return "vnd.android.cursor.dir/vnd." + AUTHORITY + "." + STICKERS_PATH;
+            }
+            if (path.contains("/" + METADATA_PATH)) {
+                return path.endsWith(METADATA_PATH)
+                    ? "vnd.android.cursor.dir/vnd." + AUTHORITY + "." + METADATA_PATH
+                    : "vnd.android.cursor.item/vnd." + AUTHORITY + "." + METADATA_PATH;
+            }
         }
+        return "image/webp";
     }
 
     @Nullable

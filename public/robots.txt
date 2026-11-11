@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /uploads/
+Disallow: /download/
+
+Sitemap: https://stickers-egqa.onrender.com/sitemap.xml

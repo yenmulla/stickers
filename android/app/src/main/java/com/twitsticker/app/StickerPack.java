@@ -13,7 +13,7 @@ public class StickerPack {
     public String privacyPolicyWebsite = "";
     public String licenseAgreementWebsite = "";
     public String imageDataVersion = "2";
-    public boolean avoidCache = true;
+    public boolean avoidCache = false;
     public boolean animatedStickerPack = true;
     public String androidPlayStoreLink = "";
     public String iosAppStoreLink = "";

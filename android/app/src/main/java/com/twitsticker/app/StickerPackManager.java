@@ -62,6 +62,7 @@ public class StickerPackManager {
                 "tray.png"
             );
             defaultPack.animatedStickerPack = true;
+            defaultPack.avoidCache = false;
             defaultPack.imageDataVersion = "2";
 
             defaultPack.stickers.add(new Sticker("starter1.webp", Arrays.asList("🔥", "✨")));
@@ -281,12 +282,15 @@ public class StickerPackManager {
             }
         }
 
-        String authority = BuildConfig.CONTENT_PROVIDER_AUTHORITY;
+        String authority = (BuildConfig.CONTENT_PROVIDER_AUTHORITY != null && !BuildConfig.CONTENT_PROVIDER_AUTHORITY.isEmpty())
+            ? BuildConfig.CONTENT_PROVIDER_AUTHORITY
+            : "com.twitsticker.app.stickercontentprovider";
         Intent intent = new Intent();
         intent.setAction("com.whatsapp.intent.action.ENABLE_STICKER_PACK");
         intent.putExtra(EXTRA_STICKER_PACK_ID, pack.identifier);
         intent.putExtra(EXTRA_STICKER_PACK_AUTHORITY, authority);
         intent.putExtra(EXTRA_STICKER_PACK_NAME, pack.name);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
         try {
             if (isPackageInstalled(WHATSAPP_PACKAGE_NAME, activity.getPackageManager())) {
