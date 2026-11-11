@@ -4,6 +4,8 @@ FROM node:20-bookworm-slim
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV FFMPEG_PATH=/usr/bin/ffmpeg
+ENV PYTHON_BIN=python3
 
 # Install system dependencies: Python3, pip, ffmpeg, curl
 RUN apt-get update && apt-get install -y --no-install-recommends \
