@@ -41,9 +41,7 @@ import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
-    private static final String PREFS_NAME = "twitsticker_prefs";
-    private static final String KEY_SERVER_URL = "server_url";
-    public static final String DEFAULT_SERVER_URL = "https://gifsticker.site";
+    public static final String SERVER_URL = "https://gifsticker.site";
 
     private static final int FILE_CHOOSER_REQUEST_CODE = 101;
 
@@ -103,6 +101,10 @@ public class MainActivity extends AppCompatActivity {
         handleIntent(getIntent());
 
         swipeRefresh.setOnRefreshListener(() -> webView.reload());
+        swipeRefresh.setOnChildScrollUpCallback((parent, child) -> webView.getScrollY() > 0);
+        webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+            swipeRefresh.setEnabled(scrollY == 0);
+        });
 
         loadCurrentServer();
     }
@@ -159,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("SetJavaScriptEnabled")
     private void setupWebView() {
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -222,46 +225,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public String getServerBaseUrl() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        return prefs.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL);
+        return SERVER_URL;
     }
 
     private void loadCurrentServer() {
-        String url = getServerBaseUrl();
-        webView.loadUrl(url);
-    }
-
-    private void showServerSettingsDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Server Connection Settings");
-
-        final EditText input = new EditText(this);
-        input.setHint("http://192.168.1.200:3000");
-        input.setText(getServerBaseUrl());
-        builder.setView(input);
-
-        builder.setPositiveButton("Connect", (dialog, which) -> {
-            String newUrl = input.getText().toString().trim();
-            if (!TextUtils.isEmpty(newUrl)) {
-                if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://")) {
-                    newUrl = "http://" + newUrl;
-                }
-                SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                prefs.edit().putString(KEY_SERVER_URL, newUrl).apply();
-                webView.loadUrl(newUrl);
-            }
-        });
-
-        builder.setNegativeButton("Cancel", null);
-        builder.show();
+        webView.loadUrl(SERVER_URL);
     }
 
     private void showConnectionErrorDialog() {
         new AlertDialog.Builder(this)
             .setTitle("Connection Error")
-            .setMessage("Cannot reach TwitSticker server at:\n" + getServerBaseUrl() + "\n\nMake sure your PC and phone are on the same Wi-Fi network and the server is running!")
-            .setPositiveButton("Change Server IP", (dialog, which) -> showServerSettingsDialog())
-            .setNeutralButton("Retry", (dialog, which) -> webView.reload())
+            .setMessage("Cannot reach TwitSticker server at " + SERVER_URL + ".\nPlease check your internet connection and try again.")
+            .setPositiveButton("Retry", (dialog, which) -> webView.reload())
             .setNegativeButton("Dismiss", null)
             .show();
     }
@@ -275,10 +250,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_server_settings) {
-            showServerSettingsDialog();
-            return true;
-        } else if (id == R.id.action_open_whatsapp_pack) {
+        if (id == R.id.action_open_whatsapp_pack) {
             packManager.addPackToWhatsApp(this, "twitsticker_main");
             return true;
         } else if (id == R.id.action_refresh) {

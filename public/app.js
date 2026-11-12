@@ -1254,6 +1254,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const playStoreBtn = document.getElementById('playStoreBtn');
     if (playStoreBtn) playStoreBtn.classList.add('hidden');
 
+    // Ensure zero top padding on body inside native app
+    document.body.style.paddingTop = '0px';
+
+    // Remove redundant "Get TwitSticker App" link from header
+    const getAppBtn = document.querySelector('header a[href*="twitsticker.apk"]');
+    if (getAppBtn) getAppBtn.remove();
+
     // 2. In native app: completely remove all ad spaces from DOM
     document.querySelectorAll('.ad-slot-wrapper').forEach(el => el.remove());
   } else {

@@ -8,7 +8,7 @@
 }
 
 body {
-  padding-top: var(--sat);
+  padding-top: 0;
   padding-bottom: var(--sab);
   padding-left: var(--sal);
   padding-right: var(--sar);
