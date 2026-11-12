@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-  <title>Privacy Policy - TwitSticker</title>
-  <meta name="description" content="Privacy Policy for TwitSticker. We respect your privacy. All conversions are processed locally on your machine.">
+  <title>Privacy Policy - TwitSticker (Web & Android App)</title>
+  <meta name="description" content="Privacy Policy for TwitSticker Web & Android App. We respect your privacy: zero registration, local & ephemeral processing, and full Google Play & AdSense compliance.">
   <meta name="theme-color" content="#0b0e14">
+  <link rel="canonical" href="https://gifsticker.site/privacy.html">
 
   <!-- Favicon & Touch Icon -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -21,91 +22,445 @@
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-    body { font-family: 'Outfit', sans-serif; }
+    body { font-family: 'Inter', sans-serif; }
+    h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; }
+    html { scroll-behavior: smooth; }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-300 min-h-screen font-['Outfit'] antialiased selection:bg-emerald-500/30">
+<body class="bg-[#0b0e14] text-slate-300 min-h-screen flex flex-col antialiased selection:bg-[#25D366] selection:text-black">
 
-  <!-- Header -->
-  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+  <!-- Glow background elements -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+    <div class="absolute -top-40 left-1/4 w-96 h-96 bg-[#1DA1F2]/10 rounded-full blur-[120px]"></div>
+    <div class="absolute top-60 right-1/4 w-96 h-96 bg-[#25D366]/10 rounded-full blur-[120px]"></div>
+  </div>
+
+  <!-- Navbar -->
+  <header class="border-b border-slate-800/80 bg-[#0d121c]/90 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
       <a href="/" class="flex items-center space-x-3 group">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline><polyline points="7.5 19.79 7.5 14.6 3 12"></polyline><polyline points="21 12 16.5 14.6 16.5 19.79"></polyline><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        <img src="/logo.svg" alt="TwitSticker" class="w-9 h-9 rounded-xl shadow-lg shadow-[#25D366]/20 group-hover:scale-105 transition-transform duration-200 object-contain">
+        <div>
+          <span class="font-['Outfit'] font-extrabold text-xl tracking-tight text-white flex items-center gap-1.5">
+            Twit<span class="text-[#25D366]">Sticker</span>
+          </span>
         </div>
-        <span class="font-bold text-xl tracking-tight text-white group-hover:text-emerald-400 transition-colors">TwitSticker</span>
       </a>
-      <a href="/" class="text-sm font-semibold text-slate-400 hover:text-white transition-colors">Back to App</a>
+
+      <div class="flex items-center space-x-3 text-xs">
+        <a 
+          href="/download/twitsticker.apk" 
+          download="TwitSticker.apk" 
+          class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 font-semibold transition"
+          title="Download our native Android app"
+        >
+          <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+          <span>Get Android App</span>
+        </a>
+        <a 
+          href="/" 
+          class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition font-medium"
+        >
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+          <span>Back to App</span>
+        </a>
+      </div>
     </div>
   </header>
 
-  <!-- Main Content -->
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
-    <div class="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 sm:p-10">
-      <h1 class="text-3xl sm:text-4xl font-extrabold text-white mb-6">Privacy Policy</h1>
-      <p class="text-slate-400 mb-8">Last updated: <span id="currentDate"></span></p>
+  <!-- Hero Banner -->
+  <div class="border-b border-slate-800/60 bg-gradient-to-b from-slate-900/60 to-transparent py-10 sm:py-14">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+        <i data-lucide="shield-check" class="w-4 h-4"></i>
+        <span>Privacy-First Architecture</span>
+      </div>
+      <h1 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">Privacy Policy</h1>
+      <p class="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto">
+        Your privacy matters. Learn how TwitSticker protects your media, processes conversions locally, and handles data across our Web service and Android application.
+      </p>
+      <div class="pt-2 flex items-center justify-center gap-4 text-xs text-slate-500">
+        <span class="flex items-center gap-1.5">
+          <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+          <span>Last Updated: <strong class="text-slate-300" id="currentDate">November 2026</strong></span>
+        </span>
+        <span>•</span>
+        <span class="flex items-center gap-1.5">
+          <i data-lucide="globe" class="w-3.5 h-3.5 text-slate-400"></i>
+          <span>Applies to Web &amp; Android App</span>
+        </span>
+      </div>
+    </div>
+  </div>
 
-      <div class="space-y-8 text-slate-300">
+  <!-- Trust Highlights Grid -->
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 -mt-4 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-sm space-y-1.5">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-400">
+          <i data-lucide="user-x" class="w-4 h-4"></i>
+        </div>
+        <h2 class="text-white font-bold text-sm">No Registration</h2>
+        <p class="text-slate-400 text-xs leading-relaxed">No sign-up, email, phone number, or passwords required to create stickers.</p>
+      </div>
 
-        <section>
-          <h2 class="text-xl font-bold text-white mb-3">1. Information We Collect</h2>
-          <p>TwitSticker is designed with privacy in mind. We do not require you to create an account, log in, or provide any personal information to use our service. We do not collect, store, or share personally identifiable information.</p>
+      <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-sm space-y-1.5">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-400">
+          <i data-lucide="cpu" class="w-4 h-4"></i>
+        </div>
+        <h2 class="text-white font-bold text-sm">Local Conversion</h2>
+        <p class="text-slate-400 text-xs leading-relaxed">Media transformations are executed locally on your device with FFmpeg.</p>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-sm space-y-1.5">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-400">
+          <i data-lucide="database-zap" class="w-4 h-4"></i>
+        </div>
+        <h2 class="text-white font-bold text-sm">Zero Permanent Storage</h2>
+        <p class="text-slate-400 text-xs leading-relaxed">We never permanently store, archive, or inspect the media you convert.</p>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-sm space-y-1.5">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-400">
+          <i data-lucide="lock" class="w-4 h-4"></i>
+        </div>
+        <h2 class="text-white font-bold text-sm">No Data Selling</h2>
+        <p class="text-slate-400 text-xs leading-relaxed">We never sell, rent, or trade personal data to brokers or third parties.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Layout (Sidebar TOC + Article) -->
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 pb-16 flex-1 w-full">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+      <!-- Table of Contents (Sticky on Desktop) -->
+      <aside class="hidden lg:block lg:col-span-4 sticky top-24 bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm space-y-3">
+        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+          <i data-lucide="list" class="w-4 h-4 text-emerald-400"></i>
+          <span>Table of Contents</span>
+        </div>
+        <nav class="space-y-1.5 text-xs">
+          <a href="#section-1" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">1. Introduction &amp; Scope</a>
+          <a href="#section-2" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">2. Information We Collect</a>
+          <a href="#section-3" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">3. Media Processing Architecture</a>
+          <a href="#section-4" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">4. Google Analytics &amp; GTM</a>
+          <a href="#section-5" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">5. Google AdSense &amp; Cookies</a>
+          <a href="#section-6" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">6. Android App &amp; Play Safety</a>
+          <a href="#section-7" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">7. WhatsApp &amp; Twitter Integration</a>
+          <a href="#section-8" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">8. GDPR Legal Bases (EEA)</a>
+          <a href="#section-9" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">9. Your Privacy Rights (CCPA/GDPR)</a>
+          <a href="#section-10" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">10. Children's Privacy</a>
+          <a href="#section-11" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">11. Data Retention &amp; Security</a>
+          <a href="#section-12" class="block py-1 text-slate-400 hover:text-emerald-400 transition truncate">12. Contact &amp; Inquiries</a>
+        </nav>
+      </aside>
+
+      <!-- Policy Body -->
+      <article class="lg:col-span-8 space-y-8 text-slate-300 text-sm leading-relaxed">
+
+        <!-- Section 1 -->
+        <section id="section-1" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="info" class="w-5 h-5 text-emerald-400"></i>
+            <h2>1. Introduction &amp; Scope</h2>
+          </div>
+          <p>
+            Welcome to <strong>TwitSticker</strong> ("we", "our", or "us"). This Privacy Policy governs your use of the TwitSticker website located at <a href="https://gifsticker.site" class="text-emerald-400 hover:underline">gifsticker.site</a> and the official TwitSticker Android companion application (<code class="text-slate-200">com.twitsticker.app</code>).
+          </p>
+          <p>
+            TwitSticker is designed from the ground up to empower users to convert public videos, animated GIFs, and memes from Twitter/X into official 512x512 transparent animated WhatsApp stickers with minimum data exposure. By accessing our website or using our application, you agree to the practices outlined in this policy.
+          </p>
         </section>
 
-        <section>
-          <h2 class="text-xl font-bold text-white mb-3">2. Processing of Media (Local Processing)</h2>
-          <p>When you convert a Twitter/X video or GIF using our service:</p>
-          <ul class="list-disc pl-5 mt-2 space-y-1 text-slate-400">
-            <li>The media is downloaded to your browser and all video processing and sticker generation happens <strong>locally on your machine</strong> using FFmpeg (via WebAssembly).</li>
-            <li>We do not upload your videos to our servers for conversion.</li>
-            <li>Because all processing happens on your device, we never retain, view, or distribute the media you process.</li>
+        <!-- Section 2 -->
+        <section id="section-2" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="eye-off" class="w-5 h-5 text-emerald-400"></i>
+            <h2>2. Information We Collect (and Do Not Collect)</h2>
+          </div>
+          <div class="space-y-3">
+            <h3 class="text-white font-semibold text-sm">A. Personal Data We Do NOT Collect</h3>
+            <p>
+              We do not require user accounts. We never ask for, collect, store, or sell:
+            </p>
+            <ul class="list-disc pl-5 space-y-1 text-slate-400 text-xs sm:text-sm">
+              <li>Names, usernames, home addresses, or phone numbers.</li>
+              <li>Passwords or login credentials.</li>
+              <li>Credit card or payment billing details (TwitSticker is 100% free).</li>
+              <li>Your WhatsApp chat messages, contacts, or personal profile data.</li>
+            </ul>
+          </div>
+          <div class="space-y-3 pt-2">
+            <h3 class="text-white font-semibold text-sm">B. Automatically Collected Technical Information</h3>
+            <p>
+              When you visit our site or use our Android app, our infrastructure and trusted partners may automatically receive standard technical information:
+            </p>
+            <ul class="list-disc pl-5 space-y-1 text-slate-400 text-xs sm:text-sm">
+              <li><strong>Device &amp; Browser Information:</strong> Browser type and version, device model, operating system, preferred language, and screen resolution.</li>
+              <li><strong>Network &amp; Request Data:</strong> Truncated/anonymized IP address (used strictly for geolocation estimation and security rate limiting), referring URL, and server request timestamps.</li>
+              <li><strong>Usage Telemetry:</strong> Aggregated feature interactions, such as conversion clicks and error codes, to diagnose server performance.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- Section 3 -->
+        <section id="section-3" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="hard-drive" class="w-5 h-5 text-emerald-400"></i>
+            <h2>3. Media Processing Architecture (Local &amp; Ephemeral)</h2>
+          </div>
+          <p>
+            Our core architecture is intentionally engineered to minimize user media exposure:
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-2">
+              <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Local Processing</span>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                When you convert videos via the web client, processing is performed inside your browser's local sandbox using WebAssembly (Wasm) FFmpeg. Video frames remain in your browser's private memory.
+              </p>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-2">
+              <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Ephemeral Cache</span>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                For server-assisted extracts or uploads, media files are stored only in temporary memory or ephemeral storage solely to complete the conversion, and are purged automatically via periodic cleanup cycles.
+              </p>
+            </div>
+          </div>
+          <p class="text-xs text-slate-400">
+            We do not index, search, catalog, or create galleries from your converted stickers.
+          </p>
+        </section>
+
+        <!-- Section 4 -->
+        <section id="section-4" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="bar-chart-2" class="w-5 h-5 text-emerald-400"></i>
+            <h2>4. Google Analytics &amp; Google Tag Manager</h2>
+          </div>
+          <p>
+            We use <strong>Google Analytics</strong> (via Google Tag Manager container <code class="text-slate-200">GTM-N3CH5GSW</code>) to understand aggregate user engagement and diagnose bugs.
+          </p>
+          <ul class="list-disc pl-5 space-y-1.5 text-slate-400 text-xs sm:text-sm">
+            <li><strong>Anonymized IP:</strong> IP addresses are masked by default, and personal identification is prohibited.</li>
+            <li><strong>Aggregated Events:</strong> We measure conversion events (e.g., sticker generated, sticker downloaded, direct add to WhatsApp tapped) to improve user flows.</li>
+            <li><strong>Opt-Out:</strong> You can prevent Google Analytics from recognizing you on return visits by disabling cookies in your browser or installing the <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">Google Analytics Opt-out Browser Add-on</a>.</li>
           </ul>
         </section>
 
-        <section>
-          <h2 class="text-xl font-bold text-white mb-3">3. Analytics and Tracking</h2>
-          <p>We use Google Analytics to analyze website traffic, understand user engagement, and optimize performance. Google Analytics uses first-party cookies to collect aggregated, anonymous information (such as browser type, operating system, page views, and feature interactions). No personally identifiable information (PII) is shared with Google. You can learn more about how Google uses information from sites that use its services by visiting <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">Google's Privacy & Terms</a>.</p>
+        <!-- Section 5 -->
+        <section id="section-5" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="badge-dollar-sign" class="w-5 h-5 text-emerald-400"></i>
+            <h2>5. Google AdSense &amp; Third-Party Advertising</h2>
+          </div>
+          <p>
+            TwitSticker displays advertisements through <strong>Google AdSense</strong> (Publisher ID: <code class="text-slate-200">ca-pub-5965063814094915</code>) to fund server bandwidth and maintenance costs.
+          </p>
+          <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs sm:text-sm space-y-2 text-slate-300">
+            <p><strong>Important Google AdSense Disclosures:</strong></p>
+            <ul class="list-disc pl-5 space-y-1 text-slate-400 text-xs">
+              <li>Third-party vendors, including Google, use cookies to serve ads based on a user's prior visits to this website or other websites.</li>
+              <li>Google's use of advertising cookies enables it and its partners to serve ads to users based on their visits to our site and/or other sites on the Internet.</li>
+              <li>Users may opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">Google Ads Settings</a>.</li>
+              <li>Alternatively, you can opt out of a third-party vendor's use of cookies for personalized advertising by visiting <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">aboutads.info</a> or <a href="https://youronlinechoices.eu/" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">Your Online Choices</a> (for EEA users).</li>
+            </ul>
+          </div>
         </section>
 
-        <section>
-          <h2 class="text-xl font-bold text-white mb-3">4. Third-Party Services</h2>
-          <p>TwitSticker interacts with Twitter/X APIs to fetch public media. Your use of the service to fetch media is subject to Twitter/X's public availability. We do not interact with your WhatsApp account; the stickers generated are downloaded to your device for you to manually import into WhatsApp.</p>
+        <!-- Section 6 -->
+        <section id="section-6" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="smartphone" class="w-5 h-5 text-emerald-400"></i>
+            <h2>6. Android App Specific Disclosures (Google Play Compliance)</h2>
+          </div>
+          <p>
+            This section applies specifically to users of the <strong>TwitSticker Android Application</strong> (<code class="text-slate-200">com.twitsticker.app</code>) distributed via APK and Google Play.
+          </p>
+          <div class="space-y-3">
+            <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5">
+              <h3 class="text-white font-semibold text-xs sm:text-sm">A. Google Advertising ID (AD_ID Permission)</h3>
+              <p class="text-slate-400 text-xs leading-relaxed">
+                The Android app declares the <code class="text-slate-300">com.google.android.gms.permission.AD_ID</code> permission. This identifier is used exclusively by certified advertising and analytics SDKs for fraud detection, ad measurement, and frequency capping. You can reset or delete your Advertising ID at any time in your device settings under <strong>Settings &gt; Privacy &gt; Ads</strong>.
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5">
+              <h3 class="text-white font-semibold text-xs sm:text-sm">B. WhatsApp Sticker Content Provider</h3>
+              <p class="text-slate-400 text-xs leading-relaxed">
+                The app uses an internal Android ContentProvider (<code class="text-slate-300">com.twitsticker.app.stickercontentprovider</code>). This provider only serves sticker WebP files and metadata directly to the official WhatsApp package on your phone when you initiate the "Add to WhatsApp" action. It does not broadcast data to unauthorized third-party apps.
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5">
+              <h3 class="text-white font-semibold text-xs sm:text-sm">C. Device Permissions</h3>
+              <p class="text-slate-400 text-xs leading-relaxed">
+                The app requests only the permissions strictly necessary to perform its advertised functions: <code class="text-slate-300">INTERNET</code> (to resolve video links) and network state checks. We do not access contacts, camera, microphone, GPS location, or phone identity.
+              </p>
+            </div>
+          </div>
         </section>
 
-        <section>
-          <h2 class="text-xl font-bold text-white mb-3">5. Changes to This Policy</h2>
-          <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated revision date.</p>
+        <!-- Section 7 -->
+        <section id="section-7" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="share-2" class="w-5 h-5 text-emerald-400"></i>
+            <h2>7. Third-Party Integrations (Twitter/X &amp; WhatsApp)</h2>
+          </div>
+          <p>
+            TwitSticker interacts with external platforms only to provide the conversion service:
+          </p>
+          <ul class="list-disc pl-5 space-y-2 text-slate-400 text-xs sm:text-sm">
+            <li>
+              <strong>Twitter / X:</strong> When you provide a public tweet link, TwitSticker queries publicly available video endpoints to resolve the MP4 or GIF stream. We never require you to log into your Twitter account or authorize an OAuth application.
+            </li>
+            <li>
+              <strong>WhatsApp:</strong> WhatsApp is a trademark of Meta Platforms, Inc. TwitSticker is an independent tool that prepares compliant WebP stickers conforming to WhatsApp's published third-party sticker specification. We do not access, read, or transmit your WhatsApp chats or account credentials.
+            </li>
+          </ul>
         </section>
 
-        <section>
-          <h2 class="text-xl font-bold text-white mb-3">6. Contact</h2>
-          <p>If you have any questions or concerns about this Privacy Policy, please feel free to contact us.</p>
+        <!-- Section 8 -->
+        <section id="section-8" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="scale" class="w-5 h-5 text-emerald-400"></i>
+            <h2>8. Legal Bases for Processing (GDPR / EEA Users)</h2>
+          </div>
+          <p>
+            If you reside in the European Economic Area (EEA), the United Kingdom, or Switzerland, we process technical data under the following legal bases:
+          </p>
+          <ul class="list-disc pl-5 space-y-1.5 text-slate-400 text-xs sm:text-sm">
+            <li><strong>Performance of a Contract:</strong> To deliver the sticker conversion service you request.</li>
+            <li><strong>Legitimate Interests:</strong> To secure our website, prevent DDoS or bot abuse, and maintain server infrastructure.</li>
+            <li><strong>Consent:</strong> For non-essential cookies and personalized advertising served by Google AdSense (where required by local law).</li>
+          </ul>
         </section>
 
-      </div>
+        <!-- Section 9 -->
+        <section id="section-9" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="user-check" class="w-5 h-5 text-emerald-400"></i>
+            <h2>9. Your Privacy Rights (GDPR &amp; CCPA / CPRA)</h2>
+          </div>
+          <p>
+            Depending on your jurisdiction (such as California or the European Union), you may have the following legal rights regarding your personal information:
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <strong class="text-white">Right of Access &amp; Portability:</strong>
+              <p class="text-slate-400">Request details on the categories of information processed.</p>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <strong class="text-white">Right to Erasure (Deletion):</strong>
+              <p class="text-slate-400">Request deletion of any temporary cache data or telemetry logs.</p>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <strong class="text-white">Right to Opt-Out:</strong>
+              <p class="text-slate-400">Opt-out of cookie tracking and personalized advertising.</p>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <strong class="text-white">Non-Discrimination:</strong>
+              <p class="text-slate-400">We will never deny services or charge different rates for exercising your privacy rights.</p>
+            </div>
+          </div>
+          <p class="text-xs text-slate-400 pt-1">
+            To exercise any of these rights, contact us at the address provided in Section 12. Because we do not store accounts, please provide your IP address or timestamp if you are requesting deletion of server access logs.
+          </p>
+        </section>
+
+        <!-- Section 10 -->
+        <section id="section-10" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="smile" class="w-5 h-5 text-emerald-400"></i>
+            <h2>10. Children's Privacy (COPPA)</h2>
+          </div>
+          <p>
+            TwitSticker is directed toward a general audience and is not intended for children under 13 years of age (or under 16 in certain jurisdictions). We do not knowingly collect or solicit personal data from children. If you become aware that a child has provided us with personal data, please contact us and we will promptly remove such information.
+          </p>
+        </section>
+
+        <!-- Section 11 -->
+        <section id="section-11" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="shield" class="w-5 h-5 text-emerald-400"></i>
+            <h2>11. Data Retention &amp; Security Measures</h2>
+          </div>
+          <p>
+            We implement industry-standard technical safeguards to protect your experience:
+          </p>
+          <ul class="list-disc pl-5 space-y-1 text-slate-400 text-xs sm:text-sm">
+            <li><strong>HTTPS Encryption:</strong> All communications between your device and our servers are encrypted in transit using Transport Layer Security (TLS/HTTPS).</li>
+            <li><strong>Automatic Purging:</strong> Uploads and converted stickers are stored only ephemerally and wiped automatically to prevent data accumulation.</li>
+            <li><strong>Restricted Access:</strong> Only automated scripts interact with temporary processing directories; human staff never inspect converted user media.</li>
+          </ul>
+        </section>
+
+        <!-- Section 12 -->
+        <section id="section-12" class="p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+          <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-lg">
+            <i data-lucide="mail" class="w-5 h-5 text-emerald-400"></i>
+            <h2>12. Changes to This Policy &amp; Contact Information</h2>
+          </div>
+          <p>
+            We may occasionally update this Privacy Policy to reflect app improvements, regulatory updates, or changes in third-party services. The revised version will be effective as soon as it is posted with an updated revision date.
+          </p>
+          <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+            <h3 class="text-white font-semibold text-xs sm:text-sm">Contact Our Privacy Team</h3>
+            <p class="text-slate-400 text-xs leading-relaxed">
+              If you have any questions, feedback, or data privacy requests regarding TwitSticker, please reach out directly:
+            </p>
+            <div class="pt-1 flex flex-col sm:flex-row sm:items-center gap-3 text-xs">
+              <a href="mailto:geoffreymwangi371@gmail.com" class="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-semibold transition">
+                <i data-lucide="mail" class="w-4 h-4"></i>
+                <span>geoffreymwangi371@gmail.com</span>
+              </a>
+              <span class="hidden sm:inline text-slate-600">•</span>
+              <span class="text-slate-400">Website: <a href="https://gifsticker.site" class="text-emerald-400 hover:underline">https://gifsticker.site</a></span>
+            </div>
+          </div>
+        </section>
+
+      </article>
+
     </div>
   </main>
 
   <!-- Footer -->
-  <footer class="border-t border-slate-800/80 py-6 mt-12 bg-slate-950/60 text-center text-xs text-slate-500">
-    <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+  <footer class="border-t border-slate-800/80 py-8 bg-slate-950/60 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
       <div class="flex items-center space-x-2">
-        <span class="font-bold text-slate-400">TwitSticker</span>
-        <span>&bull;</span>
+        <span class="font-bold text-slate-300">TwitSticker</span>
+        <span>•</span>
         <span>Animated WhatsApp Stickers Maker</span>
       </div>
       <div class="flex items-center space-x-4">
-        <span>All conversions are processed locally on your machine.</span>
-        <a href="/" class="hover:text-slate-300 transition-colors">Home</a>
+        <span>All conversions are processed locally or ephemerally.</span>
+        <a href="/" class="text-slate-400 hover:text-white transition-colors">Home</a>
+        <a href="/privacy.html" class="text-emerald-400 font-medium">Privacy Policy</a>
       </div>
     </div>
   </footer>
 
   <script>
-    document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    // Set dynamic current date
+    const d = new Date();
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const el = document.getElementById('currentDate');
+    if (el) {
+      el.textContent = `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    }
+    // Initialize Lucide Icons
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
   </script>
 </body>
 </html>
