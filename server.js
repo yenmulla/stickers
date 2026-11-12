@@ -199,8 +199,8 @@ app.post('/api/convert', upload.single('mediaFile'), async (req, res) => {
     }
 
     const metadata = {
-      packName: req.body.packName || 'Twitter Sticker',
-      author: req.body.author || 'Twitter Sticker Maker',
+      packName: req.body.packName || 'TwitSticker',
+      author: req.body.author || 'gifsticker.site',
       emojis: emojis.slice(0, 3)
     };
 
@@ -315,7 +315,7 @@ app.get('/api/stickers/:id/info', (req, res) => {
 
   const stat = fs.statSync(stickerPath);
   const metaPath = path.resolve(STICKERS_DIR, `${id}.json`);
-  let metadata = { packName: 'Twitter Sticker', author: 'TwitSticker', emojis: ['🔥', '✨'] };
+  let metadata = { packName: 'TwitSticker', author: 'gifsticker.site', emojis: ['🔥', '✨'] };
   if (fs.existsSync(metaPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(metaPath, 'utf8'));

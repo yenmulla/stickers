@@ -159,3 +159,25 @@ button:active, a:active {
   background: #1e293b;
   border-radius: 3px;
 }
+
+/* Ad slots: Hide completely when no ad is loaded */
+.ad-slot-wrapper.hidden {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Pulsing glow animation for the primary Save Sticker button */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(37, 211, 102, 0.35), 0 0 30px rgba(37, 211, 102, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(37, 211, 102, 0.65), 0 0 45px rgba(37, 211, 102, 0.3);
+  }
+}
+
+.btn-pulse-glow {
+  animation: pulseGlow 2.5s infinite;
+}

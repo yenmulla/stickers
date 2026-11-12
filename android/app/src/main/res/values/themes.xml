@@ -7,6 +7,7 @@
         <item name="android:windowBackground">@color/background_dark</item>
         <item name="android:statusBarColor">@color/surface_dark</item>
         <item name="android:navigationBarColor">@color/surface_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>
 

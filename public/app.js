@@ -992,8 +992,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.TwitStickerNative && window.TwitStickerNative.importStickerToPack) {
       window.TwitStickerNative.importStickerToPack(
         result.stickerId,
-        result.metadata?.packName || 'TwitSticker Pack',
-        result.metadata?.author || 'TwitSticker App',
+        result.metadata?.packName || 'TwitSticker',
+        result.metadata?.author || 'gifsticker.site',
         result.url,
         JSON.stringify(result.metadata?.emojis || ['🔥', '✨'])
       );
@@ -1007,7 +1007,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (resultSection) {
       resultSection.classList.remove('hidden');
-      resultSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const primaryBtn = document.getElementById('primarySaveActionBox') || resultSection;
+      primaryBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     if (window.lucide) window.lucide.createIcons();
@@ -1229,80 +1230,139 @@ document.addEventListener('DOMContentLoaded', () => {
   updateHistoryBadge();
 
   // ----------------------------------------------------
-  // Native TwitSticker Android App Integration
+  // Native TwitSticker Android App & Platform Adaptations
   // ----------------------------------------------------
   const isNative = typeof window.TwitStickerNative !== 'undefined' || /TwitStickerApp/i.test(navigator.userAgent);
-  const nativeImportBox = document.getElementById('nativeImportBox');
-  const nativeAddToWhatsAppBtn = document.getElementById('nativeAddToWhatsAppBtn');
 
   if (isNative) {
+    // 1. In native app: completely hide WhatsApp Web / Desktop option and tabs
+    const platformTabsContainer = document.getElementById('platformTabsContainer');
+    if (platformTabsContainer) platformTabsContainer.classList.add('hidden');
+    if (tabSendWeb) tabSendWeb.classList.add('hidden');
+    if (panelSendWeb) panelSendWeb.classList.add('hidden');
+    if (panelSendMobile) panelSendMobile.classList.remove('hidden');
+
+    const actionHubHeader = document.getElementById('actionHubHeader');
+    if (actionHubHeader) actionHubHeader.classList.add('hidden');
+
+    const saveActionHeading = document.getElementById('saveActionHeading');
+    if (saveActionHeading) saveActionHeading.textContent = '1-Tap Add to WhatsApp';
+
+    const saveActionSubtext = document.getElementById('saveActionSubtext');
+    if (saveActionSubtext) saveActionSubtext.textContent = 'Adds this animated sticker directly to your WhatsApp sticker pack and opens WhatsApp.';
+
     const playStoreBtn = document.getElementById('playStoreBtn');
-    if (playStoreBtn) {
-      playStoreBtn.classList.add('hidden');
+    if (playStoreBtn) playStoreBtn.classList.add('hidden');
+
+    // 2. In native app: completely remove all ad spaces from DOM
+    document.querySelectorAll('.ad-slot-wrapper').forEach(el => el.remove());
+  } else {
+    // 3. On web: Only show ad container when Google AdSense actually fills an ad
+    function checkAdSlots() {
+      document.querySelectorAll('.ad-slot-wrapper').forEach(wrapper => {
+        const ins = wrapper.querySelector('ins.adsbygoogle');
+        if (!ins) {
+          wrapper.classList.add('hidden');
+          return;
+        }
+        const status = ins.getAttribute('data-ad-status');
+        const hasIframe = ins.querySelector('iframe');
+        if (status === 'filled' || (hasIframe && ins.offsetHeight > 20)) {
+          wrapper.classList.remove('hidden');
+        } else {
+          wrapper.classList.add('hidden');
+        }
+      });
+    }
+
+    setTimeout(checkAdSlots, 1000);
+    setTimeout(checkAdSlots, 3000);
+    setTimeout(checkAdSlots, 6000);
+
+    const adObserver = new MutationObserver(checkAdSlots);
+    document.querySelectorAll('.ad-slot-wrapper ins.adsbygoogle').forEach(ins => {
+      adObserver.observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
+    });
+  }
+
+  // Universal handler for all "SAVE STICKER & OPEN WHATSAPP" buttons
+  async function handleSaveStickerToWhatsApp() {
+    if (!state.lastResult) return;
+    const stickerId = state.lastResult.stickerId;
+    const packName = state.lastResult.metadata?.packName || 'TwitSticker';
+    const author = state.lastResult.metadata?.author || 'gifsticker.site';
+    const stickerUrl = state.lastResult.url;
+    const emojis = state.lastResult.metadata?.emojis || ['🔥', '✨'];
+
+    const allButtons = document.querySelectorAll('.save-open-wa-btn');
+    const allBtnTexts = document.querySelectorAll('.save-open-wa-text');
+    const originalText = 'SAVE STICKER & OPEN WHATSAPP';
+
+    // 1. If running inside native Android App wrapper with Java ContentProvider
+    if (window.TwitStickerNative && window.TwitStickerNative.addStickerToWhatsApp) {
+      allBtnTexts.forEach(t => { t.textContent = 'Adding to WhatsApp...'; });
+      allButtons.forEach(b => b.classList.add('opacity-80', 'pointer-events-none'));
+
+      window.TwitStickerNative.addStickerToWhatsApp(
+        stickerId,
+        packName,
+        author,
+        stickerUrl,
+        JSON.stringify(emojis)
+      );
+
+      setTimeout(() => {
+        allBtnTexts.forEach(t => { t.textContent = 'Added to WhatsApp!'; });
+        allButtons.forEach(b => b.classList.remove('opacity-80', 'pointer-events-none'));
+      }, 1500);
+
+      setTimeout(() => {
+        allBtnTexts.forEach(t => { t.textContent = originalText; });
+      }, 5000);
+      return;
+    }
+
+    // 2. Standard Mobile Browser (Android Chrome, iOS Safari)
+    allBtnTexts.forEach(t => { t.textContent = 'Saving sticker...'; });
+    allButtons.forEach(b => b.classList.add('opacity-80', 'pointer-events-none'));
+
+    try {
+      const fileName = `whatsapp-sticker-${stickerId.slice(0, 8)}.webp`;
+
+      // Step 1: Trigger clean download of the WebP sticker file
+      const a = document.createElement('a');
+      a.href = state.lastResult.downloadUrl || stickerUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      allBtnTexts.forEach(t => { t.textContent = 'Sticker Saved! Opening WhatsApp...'; });
+
+      // Step 2: Open WhatsApp
+      setTimeout(() => {
+        window.location.href = 'whatsapp://';
+      }, 700);
+
+      setTimeout(() => {
+        allBtnTexts.forEach(t => { t.textContent = 'In WhatsApp: Tap Stickers 🏷️ ➔ + Create'; });
+        allButtons.forEach(b => b.classList.remove('opacity-80', 'pointer-events-none'));
+      }, 2200);
+
+      setTimeout(() => {
+        allBtnTexts.forEach(t => { t.textContent = originalText; });
+      }, 7000);
+
+    } catch (err) {
+      console.warn('Native add to WhatsApp handled:', err);
+      allButtons.forEach(b => b.classList.remove('opacity-80', 'pointer-events-none'));
+      allBtnTexts.forEach(t => { t.textContent = originalText; });
     }
   }
 
-  if (nativeAddToWhatsAppBtn) {
-    nativeAddToWhatsAppBtn.addEventListener('click', async () => {
-      if (!state.lastResult) return;
-      const stickerId = state.lastResult.stickerId;
-      const packName = state.lastResult.metadata?.packName || 'Twitter Sticker';
-      const author = state.lastResult.metadata?.author || 'TwitSticker';
-      const stickerUrl = state.lastResult.url;
-      const emojis = state.lastResult.metadata?.emojis || ['🔥', '✨'];
-
-      // 1. If running inside native Android App wrapper with Java ContentProvider
-      if (window.TwitStickerNative && window.TwitStickerNative.addStickerToWhatsApp) {
-        window.TwitStickerNative.addStickerToWhatsApp(
-          stickerId,
-          packName,
-          author,
-          stickerUrl,
-          JSON.stringify(emojis)
-        );
-        return;
-      }
-
-      // 2. Standard Mobile Browser (Android Chrome, iOS Safari)
-      const btnText = document.getElementById('nativeAddBtnText');
-      const originalText = 'SAVE STICKER & OPEN WHATSAPP';
-      if (btnText) btnText.textContent = 'Saving sticker...';
-      nativeAddToWhatsAppBtn.classList.add('opacity-80', 'pointer-events-none');
-
-      try {
-        const fileName = `whatsapp-sticker-${stickerId.slice(0, 8)}.webp`;
-
-        // Step 1: Trigger clean download of the WebP sticker file
-        const a = document.createElement('a');
-        a.href = state.lastResult.downloadUrl || stickerUrl;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        if (btnText) btnText.textContent = 'Sticker Saved! Opening WhatsApp...';
-
-        // Step 2: Open WhatsApp
-        setTimeout(() => {
-          window.location.href = 'whatsapp://';
-        }, 700);
-
-        setTimeout(() => {
-          if (btnText) btnText.textContent = 'In WhatsApp: Tap Stickers 🏷️ ➔ + Create';
-          nativeAddToWhatsAppBtn.classList.remove('opacity-80', 'pointer-events-none');
-        }, 2200);
-
-        setTimeout(() => {
-          if (btnText) btnText.textContent = originalText;
-        }, 7000);
-
-      } catch (err) {
-        console.warn('Native add to WhatsApp handled:', err);
-        nativeAddToWhatsAppBtn.classList.remove('opacity-80', 'pointer-events-none');
-        if (btnText) btnText.textContent = originalText;
-      }
-    });
-  }
+  document.querySelectorAll('.save-open-wa-btn').forEach(btn => {
+    btn.addEventListener('click', handleSaveStickerToWhatsApp);
+  });
 
   // Handle Shared Tweet URL from Android System Share Sheet
   window.handleSharedUrl = function(sharedUrl) {

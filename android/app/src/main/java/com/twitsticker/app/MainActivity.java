@@ -24,10 +24,16 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.util.regex.Matcher;
@@ -51,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -58,6 +65,32 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("TwitSticker");
+        }
+
+        View mainLayout = findViewById(R.id.mainLayout);
+        if (mainLayout != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(mainLayout, (v, windowInsets) -> {
+                Insets systemBars = windowInsets.getInsets(
+                        WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
+                );
+
+                toolbar.setPadding(
+                        systemBars.left,
+                        systemBars.top,
+                        systemBars.right,
+                        0
+                );
+
+                v.setPadding(0, 0, 0, systemBars.bottom);
+
+                return windowInsets;
+            });
+        }
+
+        WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (insetsController != null) {
+            insetsController.setAppearanceLightStatusBars(false);
+            insetsController.setAppearanceLightNavigationBars(false);
         }
 
         packManager = new StickerPackManager(this);

@@ -230,9 +230,9 @@
   <main class="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8 w-full">
 
     <!-- Top Leaderboard Ad Slot (Google AdSense) -->
-    <div class="w-full flex flex-col items-center justify-center mb-4 sm:mb-6">
+    <div class="ad-slot-wrapper hidden w-full flex flex-col items-center justify-center mb-4 sm:mb-6">
       <div class="text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-1">Advertisement</div>
-      <div class="w-full max-w-4xl min-h-[60px] sm:min-h-[90px] rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-center p-2 text-slate-500 text-xs overflow-hidden">
+      <div class="w-full max-w-4xl rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-center p-2 text-slate-500 text-xs overflow-hidden">
         <!-- Google AdSense Top Leaderboard Unit -->
         <ins class="adsbygoogle"
              style="display:block;width:100%;min-height:60px;"
@@ -487,11 +487,11 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="text-[11px] text-slate-400 block mb-1">Sticker Pack Name</label>
-                <input type="text" id="metaPackName" value="Twitter Memes" class="w-full px-3 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-[#25D366]">
+                <input type="text" id="metaPackName" value="TwitSticker" placeholder="TwitSticker" class="w-full px-3 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-[#25D366]">
               </div>
               <div>
                 <label class="text-[11px] text-slate-400 block mb-1">Publisher / Author</label>
-                <input type="text" id="metaAuthor" value="@TwitterSticker" class="w-full px-3 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-[#25D366]">
+                <input type="text" id="metaAuthor" value="gifsticker.site" placeholder="gifsticker.site" class="w-full px-3 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-[#25D366]">
               </div>
             </div>
             <div>
@@ -615,30 +615,69 @@
                 <span>Embedded WhatsApp EXIF metadata ready</span>
               </p>
 
+              <!-- Mobile Instant Save Button: Visible directly under preview on mobile -->
+              <div class="mt-4 w-full lg:hidden">
+                <button 
+                  type="button" 
+                  class="save-open-wa-btn btn-pulse-glow w-full py-4 px-4 rounded-xl bg-gradient-to-r from-[#20ba59] to-[#25D366] hover:from-[#1ea850] hover:to-[#22c35e] text-slate-950 font-['Outfit'] font-black text-base shadow-xl shadow-[#25D366]/30 transition active:scale-[0.98] flex items-center justify-center gap-2.5 cursor-pointer"
+                >
+                  <i data-lucide="message-circle" class="w-6 h-6 fill-slate-950 stroke-[2]"></i>
+                  <span class="save-open-wa-text font-black">SAVE STICKER & OPEN WHATSAPP</span>
+                </button>
+              </div>
+
             </div>
           </div>
 
           <!-- Right: How to Send as Sticker Action Hub (7 Cols) -->
-          <div class="lg:col-span-7 space-y-5">
-            <div>
-              <h2 class="text-2xl font-['Outfit'] font-bold text-white">How would you like to send this sticker?</h2>
+          <div class="lg:col-span-7 space-y-4">
+            
+            <!-- Prominent Primary Save & Open WhatsApp Box (Always right at top!) -->
+            <div id="primarySaveActionBox" class="p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-emerald-950/80 via-slate-900 to-slate-950 border-2 border-[#25D366] shadow-xl shadow-[#25D366]/25 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 font-['Outfit']">
+                  <i data-lucide="zap" class="w-4 h-4 fill-emerald-400 text-emerald-400"></i>
+                  <span id="saveActionHeading">WhatsApp 1-Tap Export</span>
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 text-[11px] font-semibold border border-emerald-500/20">
+                  Ready to Send
+                </span>
+              </div>
+
+              <!-- Big Glowing SAVE STICKER & OPEN WHATSAPP Button -->
+              <button 
+                type="button" 
+                id="nativeAddToWhatsAppBtn" 
+                class="save-open-wa-btn btn-pulse-glow w-full py-4 px-6 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 font-['Outfit'] font-black text-base sm:text-lg shadow-xl shadow-[#25D366]/40 transition active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer"
+              >
+                <i data-lucide="message-circle" class="w-7 h-7 fill-slate-950 stroke-[2] shrink-0"></i>
+                <span id="nativeAddBtnText" class="save-open-wa-text font-black tracking-wide">SAVE STICKER & OPEN WHATSAPP</span>
+              </button>
+
+              <p class="text-[11.5px] text-slate-400 text-center leading-relaxed" id="saveActionSubtext">
+                Adds this animated sticker directly to your WhatsApp sticker pack and opens WhatsApp.
+              </p>
+            </div>
+
+            <div id="actionHubHeader">
+              <h2 class="text-xl sm:text-2xl font-['Outfit'] font-bold text-white">How would you like to send this sticker?</h2>
               <p class="text-xs text-slate-400 mt-1">To ensure WhatsApp sends this as a <strong>real transparent sticker</strong> (instead of a photo or GIF), choose your device below:</p>
             </div>
 
-            <!-- Platform Switcher Tabs -->
-            <div class="flex gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs font-semibold">
-              <button type="button" id="tabSendWeb" class="flex-1 py-2 px-3 rounded-lg bg-slate-800 text-white flex items-center justify-center gap-1.5 transition">
+            <!-- Platform Switcher Tabs (Hidden when inside App) -->
+            <div id="platformTabsContainer" class="flex gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-xs font-semibold">
+              <button type="button" id="tabSendMobile" class="flex-1 py-2 px-3 rounded-lg bg-slate-800 text-white flex items-center justify-center gap-1.5 transition">
+                <i data-lucide="smartphone" class="w-4 h-4 text-[#25D366]"></i>
+                <span>Mobile (WhatsApp App)</span>
+              </button>
+              <button type="button" id="tabSendWeb" class="flex-1 py-2 px-3 rounded-lg text-slate-400 hover:text-white flex items-center justify-center gap-1.5 transition">
                 <i data-lucide="monitor" class="w-4 h-4 text-[#25D366]"></i>
                 <span>WhatsApp Web / Desktop</span>
-              </button>
-              <button type="button" id="tabSendMobile" class="flex-1 py-2 px-3 rounded-lg text-slate-400 hover:text-white flex items-center justify-center gap-1.5 transition">
-                <i data-lucide="smartphone" class="w-4 h-4 text-[#25D366]"></i>
-                <span>iPhone & Android</span>
               </button>
             </div>
 
             <!-- Panel 1: WhatsApp Web / Desktop (Fastest drag & drop or sticker menu) -->
-            <div id="panelSendWeb" class="space-y-4">
+            <div id="panelSendWeb" class="hidden space-y-4">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 
                 <!-- Primary Action: 1-Click Download for Instant Drag & Drop -->
@@ -748,25 +787,11 @@
             </div>
 
             <!-- Panel 2: Mobile (iPhone & Android) -->
-            <div id="panelSendMobile" class="hidden space-y-4">
+            <div id="panelSendMobile" class="space-y-4">
               <!-- Native TwitSticker 1-Tap Mobile Action -->
-              <div id="nativeImportBox" class="p-4 rounded-xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-2 border-[#25D366] shadow-xl shadow-[#25D366]/20 text-center space-y-3">
-                <div class="flex items-center justify-center gap-1.5 text-emerald-400 font-bold text-xs uppercase tracking-wider">
-                  <i data-lucide="zap" class="w-4 h-4 fill-emerald-400"></i>
-                  <span>WhatsApp Mobile Quick Send</span>
-                </div>
-                
-                <button 
-                  type="button" 
-                  id="nativeAddToWhatsAppBtn" 
-                  class="w-full py-4 px-6 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 font-['Outfit'] font-black text-base shadow-lg shadow-[#25D366]/30 transition active:scale-[0.98] flex items-center justify-center gap-2.5"
-                >
-                  <i data-lucide="download" class="w-6 h-6 stroke-[2.5]"></i>
-                  <span id="nativeAddBtnText">SAVE STICKER & OPEN WHATSAPP</span>
-                </button>
-
+              <div id="nativeImportBox" class="p-4 rounded-xl bg-slate-950/90 border border-slate-800 text-center space-y-3">
                 <!-- Step-by-step saving instructions -->
-                <div class="p-3 bg-slate-950/90 rounded-xl border border-slate-800 text-left space-y-2 text-xs">
+                <div class="text-left space-y-2 text-xs">
                   <div class="font-semibold text-slate-200 flex items-center justify-between">
                     <span class="flex items-center gap-1.5">
                       <i data-lucide="star" class="w-4 h-4 text-amber-400 fill-amber-400"></i>
@@ -946,9 +971,9 @@
     </div>
 
     <!-- Mid-Content Ad Banner Slot -->
-    <div class="w-full flex flex-col items-center justify-center my-6 sm:my-8">
+    <div class="ad-slot-wrapper hidden w-full flex flex-col items-center justify-center my-6 sm:my-8">
       <div class="text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-1">Advertisement</div>
-      <div class="w-full max-w-4xl min-h-[90px] sm:min-h-[120px] rounded-2xl bg-slate-900/60 border border-slate-800/80 flex flex-col items-center justify-center p-3 text-center overflow-hidden">
+      <div class="w-full max-w-4xl rounded-2xl bg-slate-900/60 border border-slate-800/80 flex flex-col items-center justify-center p-3 text-center overflow-hidden">
         <!-- Google AdSense Responsive Mid Banner -->
         <ins class="adsbygoogle"
              style="display:block;width:100%;min-height:90px;"
@@ -1044,9 +1069,9 @@
     </section>
 
     <!-- Bottom Ad Banner Slot -->
-    <div class="w-full flex flex-col items-center justify-center my-6">
+    <div class="ad-slot-wrapper hidden w-full flex flex-col items-center justify-center my-6">
       <div class="text-[10px] uppercase font-bold tracking-widest text-slate-500 mb-1">Advertisement</div>
-      <div class="w-full max-w-4xl min-h-[60px] sm:min-h-[90px] rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-center p-2 text-slate-500 text-xs overflow-hidden">
+      <div class="w-full max-w-4xl rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-center p-2 text-slate-500 text-xs overflow-hidden">
         <!-- Google AdSense Responsive Bottom Unit -->
         <ins class="adsbygoogle"
              style="display:block;width:100%;min-height:60px;"

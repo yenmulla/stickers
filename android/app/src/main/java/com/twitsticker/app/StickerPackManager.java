@@ -57,10 +57,11 @@ public class StickerPackManager {
         if (packs.isEmpty()) {
             StickerPack defaultPack = new StickerPack(
                 "twitsticker_main",
-                "TwitSticker Pack",
-                "TwitSticker App",
+                "TwitSticker",
+                "gifsticker.site",
                 "tray.png"
             );
+            defaultPack.publisherWebsite = "https://gifsticker.site";
             defaultPack.animatedStickerPack = true;
             defaultPack.avoidCache = false;
             defaultPack.imageDataVersion = "2";
@@ -209,15 +210,20 @@ public class StickerPackManager {
             }
         }
 
+        String cleanPackName = (packName != null && !packName.trim().isEmpty()) ? packName : "TwitSticker";
+        String cleanAuthor = (author != null && !author.trim().isEmpty()) ? author : "gifsticker.site";
+
         if (targetPack == null) {
-            targetPack = new StickerPack(packId, packName, author, "tray.png");
+            targetPack = new StickerPack(packId, cleanPackName, cleanAuthor, "tray.png");
+            targetPack.publisherWebsite = "https://gifsticker.site";
             targetPack.animatedStickerPack = true;
             targetPack.imageDataVersion = String.valueOf(System.currentTimeMillis());
             copyAssetToInternalStorage("tray.png", new File(getPackDir(packId), "tray.png"), true);
             packs.add(targetPack);
         } else {
-            targetPack.name = packName;
-            targetPack.publisher = author;
+            targetPack.name = cleanPackName;
+            targetPack.publisher = cleanAuthor;
+            targetPack.publisherWebsite = "https://gifsticker.site";
             targetPack.trayImageFile = "tray.png";
             targetPack.imageDataVersion = String.valueOf(System.currentTimeMillis());
             copyAssetToInternalStorage("tray.png", new File(getPackDir(packId), "tray.png"), true);

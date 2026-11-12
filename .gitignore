@@ -15,3 +15,8 @@ test-*.wastickers
 local.properties
 *.iml
 .idea/
+.project
+*.aab
+*.jks
+*.keystore
+twitsticker-release.apk

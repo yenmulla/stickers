@@ -105,8 +105,8 @@ public class WebAppInterface {
                 }
 
                 // Add to active sticker pack
-                String pName = (packName != null && !packName.trim().isEmpty()) ? packName : "TwitSticker Pack";
-                String pAuthor = (author != null && !author.trim().isEmpty()) ? author : "TwitSticker App";
+                String pName = (packName != null && !packName.trim().isEmpty()) ? packName : "TwitSticker";
+                String pAuthor = (author != null && !author.trim().isEmpty()) ? author : "gifsticker.site";
 
                 StickerPack pack = packManager.addStickerToPack("twitsticker_main", pName, pAuthor, tempSticker, emojis);
                 Log.d(TAG, "Sticker added to pack! Total stickers in pack: " + pack.stickers.size());
