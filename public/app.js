@@ -22,6 +22,23 @@ document.addEventListener('DOMContentLoaded', () => {
     currentStickerBlob: null
   };
 
+  // Google Analytics & Google Tag Manager Event Tracking Helper
+  function trackEvent(eventName, params = {}) {
+    try {
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', eventName, params);
+      }
+      if (window.dataLayer && Array.isArray(window.dataLayer)) {
+        window.dataLayer.push({
+          event: eventName,
+          ...params
+        });
+      }
+    } catch (e) {
+      console.debug('Analytics error:', e);
+    }
+  }
+
   // Local Storage Key & Helpers (Declared upfront to prevent TDZ ReferenceError)
   const STORAGE_KEY = 'twit_stickers_history_v1';
 
@@ -457,6 +474,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <span>Extracting...</span>
     `;
 
+    trackEvent('extract_tweet', { status: 'start' });
+
     try {
       const res = await fetch('/api/extract', {
         method: 'POST',
@@ -474,8 +493,17 @@ document.addEventListener('DOMContentLoaded', () => {
       state.localFile = null;
       state.mediaMetadata = data;
 
+      trackEvent('extract_tweet', { 
+        status: 'success', 
+        title: (data.title || '').slice(0, 50) 
+      });
+
       loadMediaIntoStudio(data.videoUrl, data.title, data.author);
     } catch (err) {
+      trackEvent('extract_tweet', { 
+        status: 'error', 
+        error_message: err.message 
+      });
       showError('Tweet Extraction Error', err.message);
     } finally {
       fetchBtn.disabled = false;
@@ -518,6 +546,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!file.type.startsWith('video/') && !file.type.startsWith('image/')) {
       return showError('Unsupported File', 'Please upload a video (.mp4, .webm, .mov) or animated GIF.');
     }
+
+    trackEvent('upload_media_file', { 
+      file_type: file.type, 
+      file_size_kb: Math.round(file.size / 1024) 
+    });
 
     state.currentSourceType = 'file';
     state.localFile = file;
@@ -569,6 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Card click to load
         card.addEventListener('click', () => {
           hideError();
+          trackEvent('select_sample_preset', { sample_title: sample.title });
           state.currentSourceType = 'sample';
           state.videoUrl = sample.url;
           state.localFile = null;
@@ -906,6 +940,14 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('videoUrl', state.videoUrl);
       }
 
+      trackEvent('convert_sticker', {
+        status: 'start',
+        source_type: state.currentSourceType,
+        duration: state.trimDuration || 3.0,
+        fps: state.fps || 14,
+        fit_mode: state.fitMode || 'fit'
+      });
+
       try {
         const res = await fetch('/api/convert', {
           method: 'POST',
@@ -917,10 +959,20 @@ document.addEventListener('DOMContentLoaded', () => {
           throw new Error(data.error || 'Failed to convert media to WhatsApp sticker');
         }
 
+        trackEvent('convert_sticker', {
+          status: 'success',
+          size_kb: data.sizeKb,
+          sticker_id: data.stickerId
+        });
+
         state.lastResult = data;
         displayResult(data);
         saveToHistory(data);
       } catch (err) {
+        trackEvent('convert_sticker', {
+          status: 'error',
+          error_message: err.message
+        });
         showError('Conversion Failed', err.message);
       } finally {
         convertBtn.disabled = false;
@@ -1301,6 +1353,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const stickerUrl = state.lastResult.url;
     const emojis = state.lastResult.metadata?.emojis || ['🔥', '✨'];
 
+    const isNative = !!(window.TwitStickerNative && window.TwitStickerNative.addStickerToWhatsApp);
+    trackEvent('add_to_whatsapp', {
+      method: isNative ? 'native_android' : 'mobile_browser',
+      sticker_id: stickerId
+    });
+
     const allButtons = document.querySelectorAll('.save-open-wa-btn');
     const allBtnTexts = document.querySelectorAll('.save-open-wa-text');
     const originalText = 'SAVE STICKER & OPEN WHATSAPP';
@@ -1370,6 +1428,29 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.save-open-wa-btn').forEach(btn => {
     btn.addEventListener('click', handleSaveStickerToWhatsApp);
   });
+
+  // Track Downloads & APK clicks
+  if (downloadStickerBtn) {
+    downloadStickerBtn.addEventListener('click', () => {
+      trackEvent('download_webp', { source: 'desktop_button' });
+    });
+  }
+  if (downloadStickerBtnMobile) {
+    downloadStickerBtnMobile.addEventListener('click', () => {
+      trackEvent('download_webp', { source: 'mobile_button' });
+    });
+  }
+  if (downloadPackBtn) {
+    downloadPackBtn.addEventListener('click', () => {
+      trackEvent('download_pack', { format: 'wastickers' });
+    });
+  }
+  const downloadApkNavBtn = document.getElementById('downloadApkNavBtn');
+  if (downloadApkNavBtn) {
+    downloadApkNavBtn.addEventListener('click', () => {
+      trackEvent('download_android_apk', { source: 'nav_header' });
+    });
+  }
 
   // Handle Shared Tweet URL from Android System Share Sheet
   window.handleSharedUrl = function(sharedUrl) {

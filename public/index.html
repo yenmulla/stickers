@@ -163,6 +163,15 @@
   }
   </script>
 
+  <!-- Google Tag Manager / Google Analytics (GTM-N3CH5GSW) -->
+  <script async src="https://www.googletagmanager.com/gtm.js?id=GTM-N3CH5GSW"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'GTM-N3CH5GSW');
+  </script>
+
   <!-- Google AdSense Verification & Script -->
   <meta name="google-adsense-account" content="ca-pub-5965063814094915">
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5965063814094915"
@@ -181,6 +190,10 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body class="bg-[#0b0e14] text-slate-100 min-h-screen flex flex-col font-['Inter'] antialiased selection:bg-[#25D366] selection:text-black">
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N3CH5GSW"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
 
   <!-- Glow background elements -->
   <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10">
@@ -208,6 +221,7 @@
           <span>WhatsApp Spec: &lt; 500 KB</span>
         </div>
         <a 
+          id="downloadApkNavBtn"
           href="/download/twitsticker.apk" 
           download="TwitSticker.apk" 
           class="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition"
