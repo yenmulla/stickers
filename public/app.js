@@ -1315,33 +1315,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. In native app: completely remove all ad spaces from DOM
     document.querySelectorAll('.ad-slot-wrapper').forEach(el => el.remove());
-  } else {
-    // 3. On web: Only show ad container when Google AdSense actually fills an ad
-    function checkAdSlots() {
-      document.querySelectorAll('.ad-slot-wrapper').forEach(wrapper => {
-        const ins = wrapper.querySelector('ins.adsbygoogle');
-        if (!ins) {
-          wrapper.classList.add('hidden');
-          return;
-        }
-        const status = ins.getAttribute('data-ad-status');
-        const hasIframe = ins.querySelector('iframe');
-        if (status === 'filled' || (hasIframe && ins.offsetHeight > 20)) {
-          wrapper.classList.remove('hidden');
-        } else {
-          wrapper.classList.add('hidden');
-        }
-      });
-    }
-
-    setTimeout(checkAdSlots, 1000);
-    setTimeout(checkAdSlots, 3000);
-    setTimeout(checkAdSlots, 6000);
-
-    const adObserver = new MutationObserver(checkAdSlots);
-    document.querySelectorAll('.ad-slot-wrapper ins.adsbygoogle').forEach(ins => {
-      adObserver.observe(ins, { attributes: true, attributeFilter: ['data-ad-status'] });
-    });
   }
 
   // Universal handler for all "SAVE STICKER & OPEN WHATSAPP" buttons

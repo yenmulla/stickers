@@ -1,2 +1,2 @@
-google.com, pub-5965063814094915, DIRECT, f08c47fec0942fa0
-
+# Adsterra Ads.txt
+# Insert your Adsterra authorized digital sellers lines below:
