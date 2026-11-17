@@ -125,6 +125,44 @@ class ConversionQueue {
 
 const conversionQueue = new ConversionQueue(1, 25);
 
+// Map to coordinate in-flight conversions (Single-Flight Pattern)
+// Prevents duplicate concurrent conversions of the exact same video
+const inFlightConversions = new Map();
+
+/**
+ * Computes a deterministic cache identifier based on the source media and conversion parameters.
+ * If two requests ask for the same video with the same trim/fps/fit, they yield identical IDs.
+ */
+function computeStickerCacheId({ inputKey, startTime, duration, fps, quality, fitMode, speed, metadata }) {
+  const norm = [
+    inputKey.trim(),
+    Number(startTime || 0).toFixed(2),
+    Number(duration || 3.5).toFixed(2),
+    parseInt(fps || 14, 10),
+    parseInt(quality || 70, 10),
+    fitMode === 'crop' ? 'crop' : 'fit',
+    Number(speed || 1.0).toFixed(2),
+    (metadata.packName || 'TwitSticker').trim(),
+    (metadata.author || 'gifsticker.site').trim(),
+    ((metadata.emojis || ['🔥', '✨'])).slice(0, 3).sort().join(',')
+  ].join('|');
+
+  return crypto.createHash('sha256').update(norm).digest('hex').slice(0, 24);
+}
+
+/**
+ * Updates mtime/atime of cached files to keep them alive in LRU cache
+ */
+function touchCachedFiles(stickerId) {
+  const now = new Date();
+  ['.webp', '.wastickers', '.json'].forEach(ext => {
+    const f = path.join(STICKERS_DIR, `${stickerId}${ext}`);
+    if (fs.existsSync(f)) {
+      try { fs.utimesSync(f, now, now); } catch (e) {}
+    }
+  });
+}
+
 // 1. Extract tweet or video URL
 app.post('/api/extract', rateLimit({ windowMs: 60 * 1000, max: 30, message: 'Too many extraction requests. Please wait a moment.' }), async (req, res) => {
   try {
@@ -233,10 +271,17 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
   let tempUploadedFile = null;
   try {
     let inputSource = null;
+    let inputKey = null;
 
     if (req.file) {
       inputSource = req.file.path;
       tempUploadedFile = req.file.path;
+      try {
+        const fileBuf = fs.readFileSync(req.file.path);
+        inputKey = 'upload_' + crypto.createHash('sha256').update(fileBuf).digest('hex').slice(0, 20);
+      } catch (e) {
+        inputKey = 'upload_' + Date.now();
+      }
     } else if (req.body.videoUrl) {
       inputSource = req.body.videoUrl;
       // If client passed /api/proxy-media?url=..., extract the real target URL
@@ -251,13 +296,10 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
       if (inputSource.startsWith('/') && !inputSource.startsWith('//')) {
         inputSource = path.join(PUBLIC_DIR, inputSource);
       }
+      inputKey = inputSource;
     } else {
       return res.status(400).json({ error: 'No video source provided (videoUrl or file upload required)' });
     }
-
-    const stickerId = crypto.randomUUID();
-    const outputFilename = `${stickerId}.webp`;
-    const outputPath = path.join(STICKERS_DIR, outputFilename);
 
     const startTime = parseFloat(req.body.startTime) || 0;
     const duration = parseFloat(req.body.duration) || 3.5;
@@ -278,10 +320,83 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
       emojis: emojis.slice(0, 3)
     };
 
+    // Compute deterministic cache key / sticker ID
+    const stickerId = computeStickerCacheId({
+      inputKey,
+      startTime,
+      duration,
+      fps,
+      quality,
+      fitMode,
+      speed,
+      metadata
+    });
+
+    const outputFilename = `${stickerId}.webp`;
+    const outputPath = path.join(STICKERS_DIR, outputFilename);
+    const packPath = path.join(STICKERS_DIR, `${stickerId}.wastickers`);
+    const metaFile = path.join(STICKERS_DIR, `${stickerId}.json`);
+
+    const stickerUrl = `/stickers/${outputFilename}`;
+    const downloadUrl = `/api/stickers/${stickerId}/download`;
+    const packUrl = `/api/stickers/${stickerId}/pack`;
+    const shareUrl = `https://gifsticker.site/sticker/${stickerId}`;
+
+    // 1. FAST PATH: Server-Side Cache Hit (Instant response, zero FFmpeg/CPU)
+    if (fs.existsSync(outputPath) && fs.existsSync(packPath)) {
+      try {
+        const stat = fs.statSync(outputPath);
+        if (stat.size > 1000) {
+          touchCachedFiles(stickerId);
+          console.log(`[CACHE HIT] Delivering cached sticker ${stickerId} for ${inputKey.slice(0, 50)}...`);
+          return res.json({
+            success: true,
+            cached: true,
+            stickerId,
+            url: stickerUrl,
+            downloadUrl,
+            packUrl,
+            shareUrl,
+            sizeBytes: stat.size,
+            sizeKb: parseFloat((stat.size / 1024).toFixed(1)),
+            isCompliant: stat.size <= 500 * 1024,
+            maxLimitKb: 500,
+            dimensions: '512x512',
+            metadata
+          });
+        }
+      } catch (cacheErr) {
+        console.warn('Cache verification notice:', cacheErr.message);
+      }
+    }
+
+    // 2. IN-FLIGHT DEDUPLICATION: Join existing active conversion if already running
+    if (inFlightConversions.has(stickerId)) {
+      console.log(`[IN-FLIGHT JOIN] Joining active conversion for sticker ${stickerId}`);
+      const result = await inFlightConversions.get(stickerId);
+      touchCachedFiles(stickerId);
+      return res.json({
+        success: true,
+        cached: true,
+        stickerId,
+        url: stickerUrl,
+        downloadUrl,
+        packUrl,
+        shareUrl,
+        sizeBytes: result.sizeBytes,
+        sizeKb: result.sizeKb,
+        isCompliant: result.isCompliant,
+        maxLimitKb: 500,
+        dimensions: '512x512',
+        metadata
+      });
+    }
+
+    // 3. EXECUTE CONVERSION: Enqueue task
     const qStatus = conversionQueue.getStatus();
     console.log(`Starting sticker conversion: source=${inputSource.slice(0, 50)}... [${startTime}s - ${startTime + duration}s] (queue: ${qStatus.queued} waiting)`);
 
-    const result = await conversionQueue.enqueue(() => convertToSticker({
+    const conversionPromise = conversionQueue.enqueue(() => convertToSticker({
       inputSource,
       outputPath,
       startTime,
@@ -293,14 +408,17 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
       metadata
     }));
 
-    const stickerUrl = `/stickers/${outputFilename}`;
-    const downloadUrl = `/api/stickers/${stickerId}/download`;
-    const packUrl = `/api/stickers/${stickerId}/pack`;
-    const shareUrl = `https://gifsticker.site/sticker/${stickerId}`;
+    inFlightConversions.set(stickerId, conversionPromise);
+
+    let result;
+    try {
+      result = await conversionPromise;
+    } finally {
+      inFlightConversions.delete(stickerId);
+    }
 
     // Persist sticker metadata for direct link sharing & info lookup
     try {
-      const metaFile = path.join(STICKERS_DIR, `${stickerId}.json`);
       fs.writeFileSync(metaFile, JSON.stringify({
         stickerId,
         sizeKb: result.sizeKb,
@@ -315,6 +433,7 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
 
     res.json({
       success: true,
+      cached: false,
       stickerId,
       url: stickerUrl,
       downloadUrl,
@@ -353,6 +472,7 @@ app.get('/api/stickers/:id/download', (req, res) => {
     return res.status(404).json({ error: 'Sticker not found' });
   }
 
+  touchCachedFiles(id);
   const stat = fs.statSync(stickerPath);
   res.writeHead(200, {
     'Content-Type': 'image/webp',
@@ -373,6 +493,7 @@ app.get('/api/stickers/:id/pack', (req, res) => {
     return res.status(404).json({ error: 'Sticker pack not found' });
   }
 
+  touchCachedFiles(id);
   const stat = fs.statSync(packPath);
   res.writeHead(200, {
     'Content-Type': 'application/octet-stream',
@@ -392,6 +513,7 @@ app.get('/api/stickers/:id/info', (req, res) => {
     return res.status(404).json({ error: 'Sticker not found' });
   }
 
+  touchCachedFiles(id);
   const stat = fs.statSync(stickerPath);
   const metaPath = path.resolve(STICKERS_DIR, `${id}.json`);
   let metadata = { packName: 'TwitSticker', author: 'gifsticker.site', emojis: ['🔥', '✨'] };
@@ -424,6 +546,7 @@ app.get(['/sticker/:id', '/s/:id'], (req, res) => {
     return res.redirect('/?notfound=' + encodeURIComponent(id));
   }
 
+  touchCachedFiles(id);
   try {
     let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
     const absoluteStickerUrl = `https://gifsticker.site/stickers/${id}.webp`;
@@ -552,8 +675,8 @@ function cleanDirectory(dir, maxAgeMs) {
 }
 
 setInterval(() => {
-  // Clean sticker cache older than 30 minutes
-  cleanDirectory(STICKERS_DIR, 30 * 60 * 1000);
+  // Clean sticker cache older than 2 hours of inactivity (LRU)
+  cleanDirectory(STICKERS_DIR, 2 * 60 * 60 * 1000);
   // Clean temporary uploads older than 15 minutes
   cleanDirectory(UPLOADS_DIR, 15 * 60 * 1000);
 }, 5 * 60 * 1000);

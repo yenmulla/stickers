@@ -126,6 +126,31 @@ async function runIntegrationTest() {
 
     if (!convData.success || !convData.stickerId) throw new Error('Conversion failed');
 
+    // 4.1 Test Server-Side Cache Hit on repeat request
+    console.log('Testing second conversion (cache hit) of /samples/sample-bars.mp4 ...');
+    const startCacheTime = Date.now();
+    const convCacheRes = await httpPostJson('http://localhost:3099/api/convert', {
+      videoUrl: '/samples/sample-bars.mp4',
+      startTime: 0,
+      duration: 1.5,
+      fps: 12,
+      quality: 60,
+      packName: 'Automated Test',
+      author: 'Tester',
+      emojis: '🔥 ⚡'
+    });
+    const cacheElapsed = Date.now() - startCacheTime;
+    const convCacheData = JSON.parse(convCacheRes.body);
+    console.log(`Cache response in ${cacheElapsed}ms:`, {
+      cached: convCacheData.cached,
+      stickerId: convCacheData.stickerId,
+      sizeKb: convCacheData.sizeKb
+    });
+
+    if (!convCacheData.cached) throw new Error('Expected cached: true on repeat conversion');
+    if (convCacheData.stickerId !== convData.stickerId) throw new Error('Sticker ID mismatch between cache and original');
+    if (cacheElapsed > 200) throw new Error(`Cache hit took too long: ${cacheElapsed}ms`);
+
     // 5. Test Download sticker
     const dlRes = await httpGet(`http://localhost:3099/api/stickers/${convData.stickerId}/download`);
     console.log(`GET /api/stickers/${convData.stickerId}/download -> Status: ${dlRes.status}, Content-Type: ${dlRes.headers['content-type']}`);

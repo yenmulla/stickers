@@ -2,6 +2,37 @@ const { spawn } = require('child_process');
 const https = require('https');
 const http = require('http');
 
+// In-memory extraction cache to eliminate redundant yt-dlp & API calls during traffic spikes
+const extractionCache = new Map();
+const EXTRACTION_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+function normalizeTwitterUrl(inputUrl) {
+  try {
+    let clean = inputUrl.trim();
+    if (!/^https?:\/\//i.test(clean) && !clean.startsWith('/')) {
+      clean = 'https://' + clean;
+    }
+    const u = new URL(clean);
+    let host = u.hostname.replace(/^(www\.|mobile\.)/, '').toLowerCase();
+    if (host === 'x.com' || host === 'fxtwitter.com' || host === 'vxtwitter.com' || host === 'fixupx.com') {
+      host = 'twitter.com';
+    }
+    return `${u.protocol}//${host}${u.pathname}`;
+  } catch (e) {
+    return inputUrl.trim();
+  }
+}
+
+// Sweep expired extraction cache entries every 15 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, item] of extractionCache.entries()) {
+    if (now - item.timestamp > EXTRACTION_CACHE_TTL_MS) {
+      extractionCache.delete(key);
+    }
+  }
+}, 15 * 60 * 1000);
+
 /**
  * Executes yt-dlp to inspect and extract video information
  */
@@ -194,13 +225,21 @@ async function resolveMedia(inputUrl) {
     url = await resolveRedirects(url);
   }
 
+  // 0. Check Extraction Cache (returns in <1ms for repeated tweet URLs)
+  const normKey = normalizeTwitterUrl(url);
+  const cached = extractionCache.get(normKey);
+  if (cached && (Date.now() - cached.timestamp < EXTRACTION_CACHE_TTL_MS)) {
+    console.log(`[EXTRACTION CACHE HIT] Serving cached media for ${normKey}`);
+    return { ...cached.data, cached: true };
+  }
+
   // 1. Check if directly a video or gif URL
   if (url.match(/\.(mp4|gif|webm|mov)(\?.*)?$/i) || 
       url.includes('video.twimg.com') || 
       url.includes('giphy.com') || 
       url.includes('tenor.com') || 
       url.includes('imgur.com')) {
-    return {
+    const directResult = {
       success: true,
       source: 'direct',
       videoUrl: url,
@@ -209,6 +248,8 @@ async function resolveMedia(inputUrl) {
       duration: null,
       thumbnail: null
     };
+    extractionCache.set(normKey, { timestamp: Date.now(), data: directResult });
+    return directResult;
   }
 
   // 2. Check if Twitter/X URL
@@ -219,6 +260,12 @@ async function resolveMedia(inputUrl) {
 
   const statusMatch = url.match(/status\/(\d+)/);
   const statusId = statusMatch ? statusMatch[1] : null;
+
+  // Helper to store in cache and return
+  function cacheAndReturn(result) {
+    extractionCache.set(normKey, { timestamp: Date.now(), data: result });
+    return result;
+  }
 
   // Strategy A: yt-dlp
   try {
@@ -253,7 +300,7 @@ async function resolveMedia(inputUrl) {
       }
     }
 
-    return {
+    return cacheAndReturn({
       success: true,
       source: 'twitter',
       videoUrl: videoUrl,
@@ -261,7 +308,7 @@ async function resolveMedia(inputUrl) {
       author: info.uploader || (info.channel ? `@${info.channel}` : 'Twitter User'),
       duration: info.duration || 3.0,
       thumbnail: info.thumbnail || null
-    };
+    });
   } catch (ytErr) {
     console.warn('yt-dlp extraction failed, attempting fallback...', ytErr.message);
   }
@@ -270,7 +317,7 @@ async function resolveMedia(inputUrl) {
   if (statusId) {
     try {
       const fxInfo = await extractWithFxTwitter(url);
-      return {
+      return cacheAndReturn({
         success: true,
         source: 'fxtwitter',
         videoUrl: fxInfo.url,
@@ -278,7 +325,7 @@ async function resolveMedia(inputUrl) {
         author: fxInfo.uploader,
         duration: fxInfo.duration || 3.0,
         thumbnail: fxInfo.thumbnail
-      };
+      });
     } catch (fxErr) {
       console.warn('FxTwitter fallback failed:', fxErr.message);
     }
@@ -286,7 +333,7 @@ async function resolveMedia(inputUrl) {
     // Strategy C: VxTwitter fallback
     try {
       const vxInfo = await extractWithVxTwitter(statusId);
-      return {
+      return cacheAndReturn({
         success: true,
         source: 'vxtwitter',
         videoUrl: vxInfo.url,
@@ -294,7 +341,7 @@ async function resolveMedia(inputUrl) {
         author: vxInfo.uploader,
         duration: vxInfo.duration || 3.0,
         thumbnail: vxInfo.thumbnail
-      };
+      });
     } catch (vxErr) {
       console.warn('VxTwitter fallback failed:', vxErr.message);
     }

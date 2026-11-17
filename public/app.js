@@ -1011,7 +1011,11 @@ document.addEventListener('DOMContentLoaded', () => {
       finalStickerBubbleImg.src = `${result.url}?t=${Date.now()}`;
     }
     if (finalSizeBadge) {
-      finalSizeBadge.textContent = `${result.sizeKb} KB`;
+      if (result.cached) {
+        finalSizeBadge.innerHTML = `${result.sizeKb} KB <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">⚡ Instant Cache</span>`;
+      } else {
+        finalSizeBadge.textContent = `${result.sizeKb} KB`;
+      }
     }
 
     if (downloadStickerBtn) {
