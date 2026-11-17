@@ -393,6 +393,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeQrModal = document.getElementById('closeQrModal');
   const doneQrBtn = document.getElementById('doneQrBtn');
 
+  // Closed Alpha Modal & Banner
+  const alphaNoticeBanner = document.getElementById('alphaNoticeBanner');
+  const closeAlphaBannerBtn = document.getElementById('closeAlphaBannerBtn');
+  const openAlphaModalBtn = document.getElementById('openAlphaModalBtn');
+  const openAlphaNavBtn = document.getElementById('openAlphaNavBtn');
+  const alphaTesterModal = document.getElementById('alphaTesterModal');
+  const closeAlphaModal = document.getElementById('closeAlphaModal');
+  const alphaTelegramBtn = document.getElementById('alphaTelegramBtn');
+
   // History Modal
   const viewHistoryBtn = document.getElementById('viewHistoryBtn');
   const historyCountBadge = document.getElementById('historyCountBadge');
@@ -1092,6 +1101,49 @@ document.addEventListener('DOMContentLoaded', () => {
   if (closeQrModal) closeQrModal.addEventListener('click', () => qrModal && qrModal.classList.add('hidden'));
   if (doneQrBtn) doneQrBtn.addEventListener('click', () => qrModal && qrModal.classList.add('hidden'));
 
+  // ================= CLOSED ALPHA MODAL & BANNER =================
+  function openAlphaModal() {
+    if (alphaTesterModal) {
+      alphaTesterModal.classList.remove('hidden');
+      trackEvent('open_alpha_modal', { trigger: 'click' });
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+
+  function hideAlphaModal() {
+    if (alphaTesterModal) alphaTesterModal.classList.add('hidden');
+  }
+
+  if (openAlphaModalBtn) openAlphaModalBtn.addEventListener('click', openAlphaModal);
+  if (openAlphaNavBtn) openAlphaNavBtn.addEventListener('click', openAlphaModal);
+  if (closeAlphaModal) closeAlphaModal.addEventListener('click', hideAlphaModal);
+  if (alphaTesterModal) {
+    alphaTesterModal.addEventListener('click', (e) => {
+      if (e.target === alphaTesterModal) hideAlphaModal();
+    });
+  }
+
+  if (closeAlphaBannerBtn) {
+    closeAlphaBannerBtn.addEventListener('click', () => {
+      if (alphaNoticeBanner) alphaNoticeBanner.classList.add('hidden');
+      try {
+        localStorage.setItem('twit_alpha_banner_dismissed', 'true');
+      } catch (e) {}
+    });
+  }
+
+  try {
+    if (localStorage.getItem('twit_alpha_banner_dismissed') === 'true') {
+      if (alphaNoticeBanner) alphaNoticeBanner.classList.add('hidden');
+    }
+  } catch (e) {}
+
+  if (alphaTelegramBtn) {
+    alphaTelegramBtn.addEventListener('click', () => {
+      trackEvent('telegram_alpha_click', { handle: '@moon_jeff' });
+    });
+  }
+
   const shareWaBtn = document.getElementById('shareWaBtn');
   if (shareWaBtn) {
     shareWaBtn.addEventListener('click', async () => {
@@ -1309,9 +1361,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ensure zero top padding on body inside native app
     document.body.style.paddingTop = '0px';
 
-    // Remove redundant "Get TwitSticker App" link from header
+    // Remove redundant "Get TwitSticker App" link and alpha banner from header inside native app
     const getAppBtn = document.querySelector('header a[href*="twitsticker.apk"]');
     if (getAppBtn) getAppBtn.remove();
+    if (openAlphaNavBtn) openAlphaNavBtn.remove();
+    if (alphaNoticeBanner) alphaNoticeBanner.remove();
+    if (alphaTesterModal) alphaTesterModal.remove();
 
     // 2. In native app: completely remove all ad spaces from DOM
     document.querySelectorAll('.ad-slot-wrapper').forEach(el => el.remove());
