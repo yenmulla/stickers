@@ -102,19 +102,25 @@ function downloadRemoteToLocal(url, targetPath) {
     }
 
     // Ultimate fallback: FFmpeg native HTTP/HLS streamer
-    function tryFfmpegDownload(origErr) {
-      console.warn(`Node download failed (${origErr.message}), falling back to FFmpeg native download for ${url.slice(0, 60)}...`);
+    async function tryFfmpegDownload(origErr) {
+      console.warn(`Node download failed (${origErr ? origErr.message : 'network error'}), falling back to FFmpeg native download for ${url.slice(0, 60)}...`);
       try {
-        const bin = getFfmpegPath();
         const headerArg = 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n';
-        execSync(`"${bin}" -y -headers "${headerArg}" -i "${url}" -c copy -t 15 "${targetPath}"`, { stdio: 'pipe' });
+        await runFfmpeg([
+          '-y',
+          '-headers', headerArg,
+          '-i', url,
+          '-c', 'copy',
+          '-t', '15',
+          targetPath
+        ], 20000);
         if (fs.existsSync(targetPath) && fs.statSync(targetPath).size > 1024) {
           return resolve(targetPath);
         }
       } catch (ffErr) {
         console.error('FFmpeg fallback download failed:', ffErr.message);
       }
-      reject(origErr);
+      reject(origErr || new Error('Download failed'));
     }
 
     tryNodeDownload(true);
@@ -122,19 +128,31 @@ function downloadRemoteToLocal(url, targetPath) {
 }
 
 /**
- * Runs ffmpeg command with arguments safely restricted in memory
+ * Runs ffmpeg command with arguments safely restricted in memory with strict timeout
  */
-function runFfmpeg(args) {
+function runFfmpeg(args, timeoutMs = 35000) {
   return new Promise((resolve, reject) => {
     let stderr = '';
     const bin = getFfmpegPath();
     const proc = spawn(bin, args);
+    let settled = false;
+
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        try { proc.kill('SIGKILL'); } catch (e) {}
+        reject(new Error('FFmpeg processing timed out'));
+      }
+    }, timeoutMs);
 
     proc.stderr.on('data', chunk => {
       stderr += chunk.toString();
     });
 
     proc.on('close', (code, signal) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       if (code === 0) {
         resolve();
       } else {
@@ -143,22 +161,34 @@ function runFfmpeg(args) {
       }
     });
 
-    proc.on('error', reject);
+    proc.on('error', err => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(err);
+    });
   });
 }
 
 /**
  * Creates .wastickers sticker pack (for 1-tap WhatsApp mobile import)
  */
-function createWastickersArchive(stickerPath, localSourcePath, packPath, startTime = 0, metadata = {}) {
+async function createWastickersArchive(stickerPath, localSourcePath, packPath, startTime = 0, metadata = {}) {
   try {
     const tempTray = packPath.replace('.wastickers', '-tray.png');
-    const bin = getFfmpegPath();
 
-    // Generate 96x96 tray icon from the source video (not animated webp)
+    // Generate 96x96 tray icon asynchronously without blocking event loop
     try {
       if (fs.existsSync(localSourcePath)) {
-        execSync(`"${bin}" -y -ss ${startTime} -i "${localSourcePath}" -vframes 1 -vf "scale=96:96:force_original_aspect_ratio=decrease,pad=96:96:(96-iw)/2:(96-ih)/2:color=0x00000000" -threads 1 "${tempTray}"`, { stdio: 'pipe' });
+        await runFfmpeg([
+          '-y',
+          '-ss', String(startTime),
+          '-i', localSourcePath,
+          '-vframes', '1',
+          '-vf', 'scale=96:96:force_original_aspect_ratio=decrease,pad=96:96:(96-iw)/2:(96-ih)/2:color=0x00000000',
+          '-threads', '1',
+          tempTray
+        ], 10000);
       }
     } catch (e) {
       console.warn('Tray icon generation warning:', e.message);
@@ -267,10 +297,10 @@ async function convertToSticker({
         '-vcodec', 'libwebp',
         '-pix_fmt', 'yuva420p',
         '-lossless', '0',
-        '-compression_level', '4',
+        '-compression_level', '3',
         '-q:v', String(currentAttempt.q),
         '-loop', '0',
-        '-threads', '2', // Cap memory usage on cloud shared hosts
+        '-threads', '1', // Strict single thread to prevent OOM on 512MB RAM
         '-an',
         tmpOut
       ];
@@ -309,7 +339,7 @@ async function convertToSticker({
 
     // Create .wastickers package
     const packPath = outputPath.replace('.webp', '.wastickers');
-    createWastickersArchive(outputPath, localVideoFile, packPath, startTime, metadata);
+    await createWastickersArchive(outputPath, localVideoFile, packPath, startTime, metadata);
 
     const finalStats = fs.statSync(outputPath);
     return {

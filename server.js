@@ -55,8 +55,78 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(PUBLIC_DIR));
 
+// In-memory sliding rate limiter to prevent abuse during traffic spikes
+const ipRequestCounts = new Map();
+function rateLimit({ windowMs, max, message }) {
+  return (req, res, next) => {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    let record = ipRequestCounts.get(ip);
+    if (!record || now > record.resetTime) {
+      record = { count: 0, resetTime: now + windowMs };
+      ipRequestCounts.set(ip, record);
+    }
+    record.count++;
+    if (record.count > max) {
+      const waitSec = Math.max(1, Math.ceil((record.resetTime - now) / 1000));
+      res.set('Retry-After', String(waitSec));
+      return res.status(429).json({ error: message || `Too many requests. Please wait ${waitSec} seconds.` });
+    }
+    next();
+  };
+}
+
+// Memory leak safeguard: sweep rate limiter records every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of ipRequestCounts.entries()) {
+    if (now > record.resetTime) ipRequestCounts.delete(ip);
+  }
+}, 5 * 60 * 1000);
+
+// Single-worker conversion queue to strictly limit concurrent FFmpeg processes on low-RAM containers
+class ConversionQueue {
+  constructor(maxConcurrent = 1, maxQueueLength = 25) {
+    this.maxConcurrent = maxConcurrent;
+    this.maxQueueLength = maxQueueLength;
+    this.running = 0;
+    this.queue = [];
+  }
+
+  enqueue(taskFn) {
+    if (this.queue.length >= this.maxQueueLength) {
+      const err = new Error('High server load: conversion queue is full. Please try again in 10-15 seconds.');
+      err.status = 429;
+      return Promise.reject(err);
+    }
+    return new Promise((resolve, reject) => {
+      this.queue.push({ taskFn, resolve, reject });
+      this.dequeue();
+    });
+  }
+
+  dequeue() {
+    if (this.running >= this.maxConcurrent || this.queue.length === 0) return;
+    this.running++;
+    const { taskFn, resolve, reject } = this.queue.shift();
+    taskFn()
+      .then(resolve)
+      .catch(reject)
+      .finally(() => {
+        this.running--;
+        this.dequeue();
+      });
+  }
+
+  getStatus() {
+    return { running: this.running, queued: this.queue.length };
+  }
+}
+
+const conversionQueue = new ConversionQueue(1, 25);
+
 // 1. Extract tweet or video URL
-app.post('/api/extract', async (req, res) => {
+app.post('/api/extract', rateLimit({ windowMs: 60 * 1000, max: 30, message: 'Too many extraction requests. Please wait a moment.' }), async (req, res) => {
   try {
     const { url } = req.body;
     if (!url || typeof url !== 'string') {
@@ -138,14 +208,18 @@ app.get('/api/proxy-media', (req, res) => {
     });
 
     proxyReq.on('error', err => {
-      console.error('Proxy media error:', err.message);
+      // Quietly ignore normal client aborts / socket resets
+      if (err.code === 'ECONNRESET' || err.code === 'EPIPE' || err.message?.includes('socket hang up') || err.message?.includes('premature close')) {
+        return;
+      }
+      console.warn('Proxy media notice:', err.message);
       if (!res.headersSent) {
         res.status(502).send('Failed to proxy media');
       }
     });
 
     req.on('close', () => {
-      proxyReq.destroy();
+      try { proxyReq.destroy(); } catch (e) {}
     });
 
     proxyReq.end();
@@ -155,7 +229,7 @@ app.get('/api/proxy-media', (req, res) => {
 });
 
 // 2. Convert to WhatsApp sticker
-app.post('/api/convert', upload.single('mediaFile'), async (req, res) => {
+app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too many conversion requests. Please wait a moment.' }), upload.single('mediaFile'), async (req, res) => {
   let tempUploadedFile = null;
   try {
     let inputSource = null;
@@ -204,9 +278,10 @@ app.post('/api/convert', upload.single('mediaFile'), async (req, res) => {
       emojis: emojis.slice(0, 3)
     };
 
-    console.log(`Starting sticker conversion: source=${inputSource.slice(0, 50)}... [${startTime}s - ${startTime + duration}s]`);
+    const qStatus = conversionQueue.getStatus();
+    console.log(`Starting sticker conversion: source=${inputSource.slice(0, 50)}... [${startTime}s - ${startTime + duration}s] (queue: ${qStatus.queued} waiting)`);
 
-    const result = await convertToSticker({
+    const result = await conversionQueue.enqueue(() => convertToSticker({
       inputSource,
       outputPath,
       startTime,
@@ -216,7 +291,7 @@ app.post('/api/convert', upload.single('mediaFile'), async (req, res) => {
       fitMode,
       speed,
       metadata
-    });
+    }));
 
     const stickerUrl = `/stickers/${outputFilename}`;
     const downloadUrl = `/api/stickers/${stickerId}/download`;
@@ -254,6 +329,10 @@ app.post('/api/convert', upload.single('mediaFile'), async (req, res) => {
     });
   } catch (err) {
     console.error('Conversion error:', err);
+    if (err.status === 429) {
+      res.set('Retry-After', '10');
+      return res.status(429).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message || 'Sticker conversion failed' });
   } finally {
     // Clean up temporary upload
@@ -428,11 +507,18 @@ app.get('/api/samples', (req, res) => {
   res.json({ samples });
 });
 
-// Health Check endpoint
+// Health Check endpoint with memory & queue stats for monitoring
 app.get(['/healthz', '/api/health'], (req, res) => {
+  const mem = process.memoryUsage();
   res.json({
     status: 'ok',
     uptime: Math.floor(process.uptime()),
+    queue: conversionQueue.getStatus(),
+    memory: {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+      heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024)
+    },
     timestamp: new Date().toISOString()
   });
 });
@@ -448,21 +534,29 @@ app.get('/api/network-info', (req, res) => {
   });
 });
 
-// Cleanup old stickers (older than 2 hours) periodically
-setInterval(() => {
-  fs.readdir(STICKERS_DIR, (err, files) => {
+// Cleanup old stickers and temporary uploads periodically (every 5 minutes)
+function cleanDirectory(dir, maxAgeMs) {
+  if (!fs.existsSync(dir)) return;
+  fs.readdir(dir, (err, files) => {
     if (err || !files) return;
     const now = Date.now();
     files.forEach(file => {
-      const filePath = path.join(STICKERS_DIR, file);
+      const filePath = path.join(dir, file);
       fs.stat(filePath, (err, stats) => {
-        if (!err && (now - stats.mtimeMs) > 2 * 60 * 60 * 1000) {
+        if (!err && (now - stats.mtimeMs) > maxAgeMs) {
           fs.unlink(filePath, () => {});
         }
       });
     });
   });
-}, 30 * 60 * 1000);
+}
+
+setInterval(() => {
+  // Clean sticker cache older than 30 minutes
+  cleanDirectory(STICKERS_DIR, 30 * 60 * 1000);
+  // Clean temporary uploads older than 15 minutes
+  cleanDirectory(UPLOADS_DIR, 15 * 60 * 1000);
+}, 5 * 60 * 1000);
 
 app.listen(PORT, HOST, () => {
   console.log(`\n==================================================`);

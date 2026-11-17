@@ -32,6 +32,6 @@ COPY . .
 # Expose server port
 EXPOSE 3000
 
-# Start server
-CMD ["node", "server.js"]
+# Start server with capped V8 heap (leaves memory headroom for FFmpeg on 512MB RAM containers)
+CMD ["node", "--max-old-space-size=300", "server.js"]
 

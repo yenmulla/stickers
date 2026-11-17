@@ -12,26 +12,59 @@ function extractWithYtDlp(url) {
 
     let stdout = '';
     let stderr = '';
+    let settled = false;
 
     const proc = spawn(python, args);
+
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        try { proc.kill('SIGKILL'); } catch (e) {}
+        reject(new Error('yt-dlp extraction timed out'));
+      }
+    }, 15000);
 
     proc.stdout.on('data', chunk => stdout += chunk);
     proc.stderr.on('data', chunk => stderr += chunk);
 
     proc.on('close', code => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+
       if (code === 0 && stdout.trim()) {
+        // Handle cases where yt-dlp outputs multiple lines of JSON or warnings before/after
+        const lines = stdout.trim().split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            try {
+              const info = JSON.parse(trimmed);
+              if (info && (info.url || info.formats)) {
+                return resolve(info);
+              }
+            } catch (e) {}
+          }
+        }
+
+        // Fallback: try parsing the whole output
         try {
           const info = JSON.parse(stdout.trim());
-          resolve(info);
+          return resolve(info);
         } catch (e) {
-          reject(new Error('Failed to parse yt-dlp JSON: ' + e.message));
+          return reject(new Error('Failed to parse yt-dlp JSON: ' + e.message));
         }
       } else {
-        reject(new Error(stderr || 'yt-dlp exited with code ' + code));
+        reject(new Error(stderr.trim() || 'yt-dlp exited with code ' + code));
       }
     });
 
-    proc.on('error', err => reject(err));
+    proc.on('error', err => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(err);
+    });
   });
 }
 
