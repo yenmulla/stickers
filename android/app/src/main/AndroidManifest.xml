@@ -3,6 +3,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
     <queries>
@@ -21,6 +22,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TwitSticker"
         android:usesCleartextTraffic="true">
+
+        <!-- Default FCM Notification Channel & Icon -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="twitsticker_updates" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@android:color/holo_green_light" />
 
         <activity
             android:name=".MainActivity"
@@ -48,6 +60,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Firebase Cloud Messaging Service -->
+        <service
+            android:name=".TwitStickerMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- WhatsApp Sticker Content Provider -->
         <provider
             android:name=".StickerContentProvider"
@@ -58,4 +79,3 @@
     </application>
 
 </manifest>
-

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "753358605856",
+    "project_id": "app-92db9b7e",
+    "storage_bucket": "app-92db9b7e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:753358605856:android:52aa8f9ebaa46a0affb645",
+        "android_client_info": {
+          "package_name": "com.twitsticker.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKruh-12KoN4O2Qdn_3huLFE5D9lxgxjU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

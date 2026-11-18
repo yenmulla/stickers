@@ -275,10 +275,10 @@
     <!-- Hero Title -->
     <div class="text-center max-w-3xl mx-auto mb-4 sm:mb-8">
       <h1 class="text-2xl sm:text-5xl font-['Outfit'] font-extrabold tracking-tight text-white mb-2 sm:mb-3">
-        Convert <span class="text-[#1DA1F2]">Twitter GIFs</span> to <span class="text-[#25D366]">WhatsApp Stickers</span>
+        Convert <span class="text-[#1DA1F2]">Any GIF &amp; Video Link</span> to <span class="text-[#25D366]">WhatsApp Stickers</span>
       </h1>
       <p class="text-slate-400 text-xs sm:text-base leading-relaxed px-1">
-        Turn viral Twitter/X GIFs & videos into official 512×512 animated stickers under 500 KB with custom WhatsApp EXIF metadata.
+        Turn any GIF link (GIPHY, Tenor, Imgur, Twitter/X, Reddit, Discord) or video into official 512×512 animated stickers under 500 KB with custom WhatsApp EXIF metadata.
       </p>
     </div>
 
@@ -288,8 +288,8 @@
       <div class="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 mb-4 sm:mb-5 text-xs sm:text-sm">
         <button id="tabLinkBtn" class="tab-btn active py-2 sm:py-2.5 px-2 flex items-center justify-center gap-1.5 rounded-lg font-semibold bg-slate-800 text-[#25D366] transition">
           <i data-lucide="link" class="w-3.5 h-3.5"></i>
-          <span class="hidden sm:inline">Twitter / X Link</span>
-          <span class="sm:hidden">X Link</span>
+          <span class="hidden sm:inline">Paste GIF / Video Link</span>
+          <span class="sm:hidden">GIF / Link</span>
         </button>
         <button id="tabUploadBtn" class="tab-btn py-2 sm:py-2.5 px-2 flex items-center justify-center gap-1.5 rounded-lg font-semibold text-slate-400 hover:text-slate-200 transition">
           <i data-lucide="upload" class="w-3.5 h-3.5"></i>
@@ -308,12 +308,13 @@
         <form id="urlForm" class="flex flex-col sm:flex-row gap-3">
           <div class="relative flex-1">
             <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-              <i data-lucide="twitter" class="w-5 h-5 text-[#1DA1F2]"></i>
+              <i data-lucide="link-2" class="w-5 h-5 text-[#25D366]"></i>
             </div>
             <input 
-              type="url" 
+              type="text" 
+              inputmode="url"
               id="tweetUrlInput" 
-              placeholder="Paste Twitter/X post URL (e.g. https://x.com/username/status/...)" 
+              placeholder="Paste any GIF or video link (GIPHY, Tenor, Twitter/X, Imgur, Reddit, or direct .gif/.mp4)..." 
               class="w-full pl-11 pr-20 py-3.5 rounded-xl bg-slate-950/70 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-[#25D366] focus:ring-1 focus:ring-[#25D366] transition text-sm font-normal shadow-inner"
               required
             >
@@ -339,7 +340,7 @@
         <div class="flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2 pt-1">
           <div class="flex items-center gap-1.5">
             <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400"></i>
-            <span>Supports standard X / Twitter posts, video tweets, and direct video links (.mp4/.gif).</span>
+            <span>Supports any GIF or video link — GIPHY, Tenor, Imgur, Twitter/X, Reddit, Discord, Pinterest, or direct .gif / .mp4 / .webp URLs.</span>
           </div>
           <button id="quickTryBtn" class="text-emerald-400 hover:underline flex items-center gap-1">
             <span>Don't have a link? Try a sample</span>
@@ -1205,6 +1206,101 @@
         <p class="text-xs text-slate-400">Point your iPhone or Android camera at this code to open and save this sticker directly to WhatsApp on your mobile device.</p>
         <div id="qrcodeBox" class="p-4 bg-white rounded-xl inline-block shadow-inner mx-auto"></div>
         <button id="doneQrBtn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300">
+          Close
+        </button>
+      </div>
+    </div>
+
+    <!-- Add as True Sticker (Not Photo) Browser Bridge Modal -->
+    <div id="stickerBridgeModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 modal-sheet">
+      <div class="bg-slate-900 border-2 border-[#25D366]/60 rounded-2xl p-5 sm:p-6 max-w-md w-full text-left space-y-4 shadow-2xl relative">
+        <button id="closeStickerBridgeModal" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-[#25D366]/20 text-[#25D366] flex items-center justify-center shrink-0">
+            <i data-lucide="sparkles" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold uppercase tracking-wider">True Animated Sticker</span>
+            <h3 id="bridgeModalTitle" class="font-['Outfit'] font-extrabold text-lg text-white">Add as Sticker (Not Photo)</h3>
+          </div>
+        </div>
+
+        <!-- Mobile Android Browser View (shown when TwitSticker APK bridge is needed) -->
+        <div id="bridgeMobileView" class="hidden space-y-3 text-xs">
+          <p class="text-slate-300 leading-relaxed">
+            Mobile browsers cannot write directly to WhatsApp's sticker tray on their own (sharing a downloaded <code>.webp</code> file from your browser sends it as a <strong>static photo</strong>).
+          </p>
+          <div class="p-3.5 rounded-xl bg-slate-950 border border-emerald-500/30 space-y-2.5">
+            <p class="font-semibold text-emerald-300">Choose how to add to your WhatsApp Sticker Keyboard:</p>
+            <a
+              id="bridgeInstallApkBtn"
+              href="/download/twitsticker.apk"
+              download="TwitSticker.apk"
+              class="w-full py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 font-['Outfit'] font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/25 transition"
+            >
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span>1. Install TwitSticker Bridge App (Free APK)</span>
+            </a>
+            <p class="text-[11px] text-slate-400">
+              Once installed, tapping <strong>"SAVE STICKER &amp; OPEN WHATSAPP"</strong> in your browser automatically triggers WhatsApp's official <em>"Add to WhatsApp"</em> sticker dialog!
+            </p>
+          </div>
+
+          <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+            <p class="text-[11px] text-slate-300 font-medium">Or import the <code>.wastickers</code> pack via Sticker Maker:</p>
+            <a
+              id="bridgeDownloadPackBtn"
+              href="#"
+              download
+              class="w-full py-2.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-700 transition"
+            >
+              <i data-lucide="package" class="w-4 h-4"></i>
+              <span>Download .wastickers Sticker Pack</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Desktop Browser View (shown on Windows / Mac / Linux browsers) -->
+        <div id="bridgeDesktopView" class="hidden space-y-3.5 text-xs">
+          <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-[11px] leading-relaxed flex items-start gap-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 shrink-0 mt-0.5"></i>
+            <span><strong>Why did WhatsApp treat it as a photo?</strong> The Windows WhatsApp Desktop app and WhatsApp's <em>"+ Create"</em> button convert files into static photos. Use either method below to keep it as a <strong>true animated sticker</strong>:</span>
+          </div>
+
+          <!-- Method 1: Drag & Drop into WhatsApp Web -->
+          <div class="p-3.5 rounded-xl bg-slate-950 border border-emerald-500/40 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-emerald-400 text-xs">Option 1: Drag &amp; Drop into WhatsApp Web</span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">Saved to Downloads</span>
+            </div>
+            <p class="text-[11px] text-slate-300 leading-relaxed">
+              Your <code>.webp</code> sticker just downloaded! Open <strong>WhatsApp Web</strong> in your browser and <strong>drag &amp; drop the downloaded <code>.webp</code> file</strong> from your browser's download bar directly into any chat.
+            </p>
+            <a
+              href="https://web.whatsapp.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-full py-3 px-4 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 font-['Outfit'] font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/25 transition"
+            >
+              <i data-lucide="external-link" class="w-4 h-4"></i>
+              <span>Open WhatsApp Web (web.whatsapp.com)</span>
+            </a>
+          </div>
+
+          <!-- Method 2: Scan with Phone to Add to Sticker Pack & Sync Everywhere -->
+          <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2 text-center">
+            <span class="font-bold text-white text-xs block">Option 2: Add to Your WhatsApp Sticker Pack (Phone Sync)</span>
+            <p class="text-[11px] text-slate-400">
+              Scan with your phone to add this sticker via the TwitSticker app — it instantly syncs to your WhatsApp Desktop &amp; Phone sticker tray!
+            </p>
+            <div id="bridgeQrBox" class="p-3 bg-white rounded-xl inline-block shadow-inner mx-auto"></div>
+          </div>
+        </div>
+
+        <button id="doneStickerBridgeBtn" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300">
           Close
         </button>
       </div>

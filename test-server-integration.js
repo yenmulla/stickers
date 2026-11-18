@@ -58,8 +58,8 @@ async function runIntegrationTest() {
 
   // Wait for server to bind port
   let serverReady = false;
-  for (let i = 0; i < 20; i++) {
-    await wait(300);
+  for (let i = 0; i < 60; i++) {
+    await wait(500);
     try {
       const res = await httpGet('http://localhost:3099/');
       if (res.status === 200) {
@@ -162,6 +162,58 @@ async function runIntegrationTest() {
     const packRes = await httpGet(`http://localhost:3099/api/stickers/${convData.stickerId}/pack`);
     console.log(`GET /api/stickers/${convData.stickerId}/pack -> Status: ${packRes.status}, Content-Length: ${packRes.headers['content-length']}`);
     if (packRes.status !== 200) throw new Error('Failed to download sticker pack');
+
+    // 7. Test Universal GIF Link Extraction & Conversion (non-Twitter links)
+    console.log('Testing /api/extract with GIPHY share page link...');
+    const giphyExtractRes = await httpPostJson('http://localhost:3099/api/extract', {
+      url: 'https://giphy.com/gifs/funny-cat-ICOgUNjpvO0PC'
+    });
+    const giphyData = JSON.parse(giphyExtractRes.body);
+    console.log('GIPHY extract result:', giphyData);
+    if (!giphyData.success || giphyData.mediaType !== 'gif' || !giphyData.videoUrl.includes('ICOgUNjpvO0PC')) {
+      throw new Error('Failed to resolve GIPHY share URL to direct GIF');
+    }
+
+    console.log('Testing /api/extract with Imgur .gifv link...');
+    const imgurExtractRes = await httpPostJson('http://localhost:3099/api/extract', {
+      url: 'https://i.imgur.com/test1234.gifv'
+    });
+    const imgurData = JSON.parse(imgurExtractRes.body);
+    console.log('Imgur extract result:', imgurData);
+    if (!imgurData.success || !imgurData.videoUrl.endsWith('.mp4')) {
+      throw new Error('Failed to resolve Imgur .gifv URL');
+    }
+
+    console.log('Testing /api/extract and /api/convert with direct remote HTTP GIF URL...');
+    const directGifUrl = 'http://localhost:3099/samples/sample-earth.gif';
+    const gifExtractRes = await httpPostJson('http://localhost:3099/api/extract', {
+      url: directGifUrl
+    });
+    const gifExtractData = JSON.parse(gifExtractRes.body);
+    console.log('Direct GIF extract result:', gifExtractData);
+    if (!gifExtractData.success || gifExtractData.mediaType !== 'gif') {
+      throw new Error('Failed to extract direct GIF URL');
+    }
+
+    const gifConvRes = await httpPostJson('http://localhost:3099/api/convert', {
+      videoUrl: gifExtractData.videoUrl,
+      startTime: 0,
+      duration: 3.0,
+      fps: 12,
+      quality: 65,
+      packName: 'Universal GIF Test',
+      author: 'gifsticker.site'
+    });
+    const gifConvData = JSON.parse(gifConvRes.body);
+    console.log('GIF conversion result:', {
+      success: gifConvData.success,
+      stickerId: gifConvData.stickerId,
+      sizeKb: gifConvData.sizeKb,
+      isCompliant: gifConvData.isCompliant
+    });
+    if (!gifConvData.success || !gifConvData.isCompliant) {
+      throw new Error('Failed to convert remote GIF link to WhatsApp sticker');
+    }
 
     console.log('\n🎉 ALL INTEGRATION TESTS PASSED PERFECTLY! 🎉\n');
   } finally {

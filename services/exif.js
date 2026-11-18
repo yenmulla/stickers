@@ -61,7 +61,20 @@ function injectWhatsAppMetadata(webpBuffer, metadata = {}) {
       modifiedWebp[20] = modifiedWebp[20] | 0x08;
       newBuffer = Buffer.concat([modifiedWebp, fullExifChunk]);
     } else {
-      newBuffer = Buffer.concat([webpBuffer, fullExifChunk]);
+      // Prepend a valid 512x512 VP8X chunk with EXIF (0x08) and Alpha (0x10) flags
+      const vp8xChunk = Buffer.from([
+        0x56, 0x50, 0x38, 0x58, // 'VP8X'
+        0x0A, 0x00, 0x00, 0x00, // Chunk size: 10 bytes
+        0x18, 0x00, 0x00, 0x00, // Flags: EXIF (0x08) | Alpha (0x10)
+        0xFF, 0x01, 0x00,       // Canvas width - 1: 511 (0x0001FF LE)
+        0xFF, 0x01, 0x00        // Canvas height - 1: 511 (0x0001FF LE)
+      ]);
+      newBuffer = Buffer.concat([
+        webpBuffer.slice(0, 12),
+        vp8xChunk,
+        webpBuffer.slice(12),
+        fullExifChunk
+      ]);
     }
 
     // Update RIFF total size at offset 4

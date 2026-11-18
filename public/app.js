@@ -245,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let copied = false;
         // Attempt 1: Modern Chromium clipboard image/webp
+        // IMPORTANT: Do NOT fall back to image/png on a canvas, because pasting image/png into WhatsApp sends a static PHOTO!
         if (typeof ClipboardItem !== 'undefined') {
           try {
             await navigator.clipboard.write([
@@ -252,56 +253,33 @@ document.addEventListener('DOMContentLoaded', () => {
             ]);
             copied = true;
           } catch (webpErr) {
-            console.log('image/webp clipboard copy failed, attempting image/png fallback:', webpErr);
+            console.log('Browser Clipboard API does not allow image/webp; triggering direct .webp download instead so it sends as a true sticker:', webpErr);
           }
         }
 
-        // Attempt 2: Fallback to rendered canvas PNG
-        if (!copied) {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.src = state.lastResult.url;
-
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-          });
-
-          const canvas = document.createElement('canvas');
-          canvas.width = 512;
-          canvas.height = 512;
-          const ctx = canvas.getContext('2d');
-          ctx.clearRect(0, 0, 512, 512);
-          ctx.drawImage(img, 0, 0, 512, 512);
-
-          await new Promise((resolve, reject) => {
-            canvas.toBlob(async (blob) => {
-              try {
-                if (!blob) throw new Error('Could not render sticker blob');
-                await navigator.clipboard.write([
-                  new ClipboardItem({ 'image/png': blob })
-                ]);
-                resolve();
-              } catch (e) {
-                reject(e);
-              }
-            }, 'image/png');
-          });
+        if (copied) {
+          if (copyBtnText) copyBtnText.textContent = 'WebP Copied! Paste in WhatsApp Web';
+        } else {
+          // Trigger direct .webp file download so the user can drag-and-drop the real .webp sticker (avoiding PNG photo conversion)
+          const a = document.createElement('a');
+          a.href = state.lastResult.downloadUrl || state.lastResult.url;
+          a.download = `whatsapp-sticker-${state.lastResult.stickerId.slice(0, 8)}.webp`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          if (copyBtnText) copyBtnText.textContent = 'Downloaded .webp! Drag file into WhatsApp Web chat';
         }
 
-        if (copyBtnText) copyBtnText.textContent = 'WebP Copied! (Or drag file to chat)';
         copyStickerClipboardBtn.classList.add('ring-2', 'ring-emerald-400');
 
         setTimeout(() => {
           if (copyBtnText) copyBtnText.textContent = originalText;
           copyStickerClipboardBtn.classList.remove('ring-2', 'ring-emerald-400');
-        }, 3500);
+        }, 4000);
 
       } catch (err) {
         console.error('Clipboard copy error:', err);
-        const fullStickerUrl = state.lastResult.shareUrl || getShareUrl(state.lastResult.stickerId);
-        navigator.clipboard.writeText(fullStickerUrl);
-        if (copyBtnText) copyBtnText.textContent = 'Link Copied! Open WhatsApp Web';
+        if (copyBtnText) copyBtnText.textContent = 'Drag downloaded .webp file into WhatsApp Web';
         setTimeout(() => {
           if (copyBtnText) copyBtnText.textContent = originalText;
         }, 3000);
@@ -507,13 +485,13 @@ document.addEventListener('DOMContentLoaded', () => {
         title: (data.title || '').slice(0, 50) 
       });
 
-      loadMediaIntoStudio(data.videoUrl, data.title, data.author);
+      loadMediaIntoStudio(data.videoUrl, data.title, data.author, data.mediaType);
     } catch (err) {
       trackEvent('extract_tweet', { 
         status: 'error', 
         error_message: err.message 
       });
-      showError('Tweet Extraction Error', err.message);
+      showError('Media Link Extraction Error', err.message);
     } finally {
       fetchBtn.disabled = false;
       fetchBtn.innerHTML = `
@@ -630,25 +608,43 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ================= STUDIO & VIDEO CONTROLS =================
-  function loadMediaIntoStudio(url, title, author) {
-    mediaTitleDisplay.textContent = title || 'Tweet Video';
-    mediaAuthorDisplay.textContent = `${author || 'Twitter User'} • 512x512 Ready`;
+  function loadMediaIntoStudio(url, title, author, mediaType) {
+    mediaTitleDisplay.textContent = title || 'Animated Media';
+    mediaAuthorDisplay.textContent = `${author || 'Media Source'} • 512x512 Ready`;
 
-    const isGifOrImg = url.match(/\.(gif|webp|png|jpe?g)(\?.*)?$/i) || (state.localFile && state.localFile.type.startsWith('image/'));
+    const isGifOrImg =
+      mediaType === 'gif' ||
+      (state.mediaMetadata && (state.mediaMetadata.mediaType === 'gif' || state.mediaMetadata.isGif)) ||
+      /\.(gif|webp|apng|png|jpe?g)(\?.*)?$/i.test(url) ||
+      (state.localFile && state.localFile.type.startsWith('image/'));
 
-    // Route external HTTP/HTTPS video through proxy to bypass Twitter CDN 403 hotlink block
+    // Route external HTTP/HTTPS media through proxy to bypass CDN 403 hotlink blocks
     const isRemoteHttp = url.startsWith('http://') || url.startsWith('https://');
     const streamUrl = isRemoteHttp ? `/api/proxy-media?url=${encodeURIComponent(url)}` : url;
 
-    if (isGifOrImg) {
-      // Show image preview elements, hide video preview elements
+    function showAsGifImage(imgSrc) {
       sourceVideoDirect.classList.add('hidden');
+      try { sourceVideoDirect.pause(); } catch (e) {}
       if (sourceVideoBubble) sourceVideoBubble.classList.add('hidden');
+      if (videoPlayPauseOverlay) {
+        videoPlayPauseOverlay.classList.add('opacity-0', 'pointer-events-none');
+        videoPlayPauseOverlay.classList.remove('opacity-90', 'pointer-events-auto');
+      }
       sourceImgDirect.classList.remove('hidden');
       if (sourceImgBubble) sourceImgBubble.classList.remove('hidden');
 
-      sourceImgDirect.src = streamUrl;
-      if (sourceImgBubble) sourceImgBubble.src = streamUrl;
+      sourceImgDirect.onerror = () => {
+        if (sourceImgDirect.src !== url) {
+          sourceImgDirect.src = url;
+        }
+      };
+      sourceImgDirect.src = imgSrc;
+      if (sourceImgBubble) sourceImgBubble.src = imgSrc;
+
+      state.startTime = 0;
+      state.trimDuration = 3.5;
+      trimStartSlider.value = 0;
+      trimDurationSlider.value = 3.5;
 
       durationDisplay.textContent = 'Animated GIF Loop';
       trimStartSlider.disabled = true;
@@ -660,6 +656,10 @@ document.addEventListener('DOMContentLoaded', () => {
       trimStartLabel.textContent = '0.0s';
       trimEndLabel.textContent = 'End';
       trimDurationLabel.textContent = 'Full Loop';
+    }
+
+    if (isGifOrImg) {
+      showAsGifImage(streamUrl);
     } else {
       // Show video preview elements, hide image preview elements
       sourceImgDirect.classList.add('hidden');
@@ -696,11 +696,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sourceVideoBubble) sourceVideoBubble.poster = posterThumb;
       }
 
-      // Handle video error with graceful direct fallback
+      // Handle video error with graceful direct fallback, then GIF <img> fallback if stream is actually an image/GIF
+      let triedDirectVideo = false;
       sourceVideoDirect.onerror = () => {
-        console.warn('Video proxy stream error, falling back to direct:', sourceVideoDirect.error);
-        if (sourceVideoDirect.src !== url) {
+        if (!triedDirectVideo && sourceVideoDirect.src !== url) {
+          triedDirectVideo = true;
+          console.warn('Video proxy stream error, falling back to direct:', sourceVideoDirect.error);
           sourceVideoDirect.src = url;
+        } else {
+          console.warn('URL is not a video stream, falling back to GIF/Image preview');
+          showAsGifImage(streamUrl);
         }
       };
 
@@ -1059,15 +1064,17 @@ document.addEventListener('DOMContentLoaded', () => {
         result.stickerId,
         result.metadata?.packName || 'TwitSticker',
         result.metadata?.author || 'gifsticker.site',
-        result.url,
+        resolveFullStickerUrl(result.url),
         JSON.stringify(result.metadata?.emojis || ['🔥', '✨'])
       );
     }
 
-    // Auto-select Mobile tab if on Android or mobile device
+    // Auto-select Mobile tab if on Android or mobile device, or Web tab on Desktop
     const isMobile = /Android|iPhone|iPad|iPod|TwitStickerApp/i.test(navigator.userAgent);
     if (isMobile && tabSendMobile) {
       tabSendMobile.click();
+    } else if (!isMobile && tabSendWeb) {
+      tabSendWeb.click();
     }
 
     if (resultSection) {
@@ -1376,6 +1383,88 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.ad-slot-wrapper').forEach(el => el.remove());
   }
 
+  // Resolve accessible origin (replaces localhost with LAN IP so mobile app / QR can fetch local stickers)
+  let primaryLanOrigin = window.location.origin;
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    fetch('/api/network-info')
+      .then(r => r.json())
+      .then(info => {
+        if (info && info.primaryUrl) {
+          primaryLanOrigin = info.primaryUrl;
+        }
+      })
+      .catch(() => {});
+  }
+
+  function resolveFullStickerUrl(relativeOrAbsUrl) {
+    if (!relativeOrAbsUrl) return '';
+    if (relativeOrAbsUrl.startsWith('http://') || relativeOrAbsUrl.startsWith('https://')) {
+      if ( (relativeOrAbsUrl.includes('localhost') || relativeOrAbsUrl.includes('127.0.0.1')) && primaryLanOrigin ) {
+        try {
+          const u = new URL(relativeOrAbsUrl);
+          return `${primaryLanOrigin}${u.pathname}${u.search}`;
+        } catch (e) {}
+      }
+      return relativeOrAbsUrl;
+    }
+    const base = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? primaryLanOrigin
+      : window.location.origin;
+    return `${base}${relativeOrAbsUrl.startsWith('/') ? '' : '/'}${relativeOrAbsUrl}`;
+  }
+
+  // Sticker Bridge Modal Elements
+  const stickerBridgeModal = document.getElementById('stickerBridgeModal');
+  const closeStickerBridgeModal = document.getElementById('closeStickerBridgeModal');
+  const doneStickerBridgeBtn = document.getElementById('doneStickerBridgeBtn');
+  const bridgeMobileView = document.getElementById('bridgeMobileView');
+  const bridgeDesktopView = document.getElementById('bridgeDesktopView');
+  const bridgeDownloadPackBtn = document.getElementById('bridgeDownloadPackBtn');
+  const bridgeQrBox = document.getElementById('bridgeQrBox');
+
+  function hideStickerBridgeModal() {
+    if (stickerBridgeModal) stickerBridgeModal.classList.add('hidden');
+  }
+  if (closeStickerBridgeModal) closeStickerBridgeModal.addEventListener('click', hideStickerBridgeModal);
+  if (doneStickerBridgeBtn) doneStickerBridgeBtn.addEventListener('click', hideStickerBridgeModal);
+  if (stickerBridgeModal) {
+    stickerBridgeModal.addEventListener('click', (e) => {
+      if (e.target === stickerBridgeModal) hideStickerBridgeModal();
+    });
+  }
+
+  function openStickerBridgeModal(mode, result) {
+    if (!stickerBridgeModal) return;
+    if (bridgeDownloadPackBtn && result && result.packUrl) {
+      bridgeDownloadPackBtn.href = result.packUrl;
+      bridgeDownloadPackBtn.setAttribute('download', `whatsapp-sticker-pack-${result.stickerId.slice(0, 8)}.wastickers`);
+    }
+
+    if (mode === 'mobile') {
+      if (bridgeMobileView) bridgeMobileView.classList.remove('hidden');
+      if (bridgeDesktopView) bridgeDesktopView.classList.add('hidden');
+    } else {
+      if (bridgeMobileView) bridgeMobileView.classList.add('hidden');
+      if (bridgeDesktopView) bridgeDesktopView.classList.remove('hidden');
+
+      if (bridgeQrBox && result) {
+        const mobileAddUrl = `${primaryLanOrigin}/sticker/${result.stickerId}?autoadd=1`;
+        bridgeQrBox.innerHTML = '';
+        new QRCode(bridgeQrBox, {
+          text: mobileAddUrl,
+          width: 150,
+          height: 150,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+    }
+
+    stickerBridgeModal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
   // Universal handler for all "SAVE STICKER & OPEN WHATSAPP" buttons
   async function handleSaveStickerToWhatsApp() {
     if (!state.lastResult) return;
@@ -1383,11 +1472,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const packName = state.lastResult.metadata?.packName || 'TwitSticker';
     const author = state.lastResult.metadata?.author || 'gifsticker.site';
     const stickerUrl = state.lastResult.url;
+    const fullStickerUrl = resolveFullStickerUrl(stickerUrl);
     const emojis = state.lastResult.metadata?.emojis || ['🔥', '✨'];
 
     const isNative = !!(window.TwitStickerNative && window.TwitStickerNative.addStickerToWhatsApp);
+    const isAndroidBrowser = /Android/i.test(navigator.userAgent) && !isNative;
+    const isIosBrowser = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !isNative;
+
     trackEvent('add_to_whatsapp', {
-      method: isNative ? 'native_android' : 'mobile_browser',
+      method: isNative ? 'native_android' : (isAndroidBrowser ? 'android_browser_bridge' : 'desktop_or_ios_browser'),
       sticker_id: stickerId
     });
 
@@ -1396,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const originalText = 'SAVE STICKER & OPEN WHATSAPP';
 
     // 1. If running inside native Android App wrapper with Java ContentProvider
-    if (window.TwitStickerNative && window.TwitStickerNative.addStickerToWhatsApp) {
+    if (isNative) {
       allBtnTexts.forEach(t => { t.textContent = 'Adding to WhatsApp...'; });
       allButtons.forEach(b => b.classList.add('opacity-80', 'pointer-events-none'));
 
@@ -1404,7 +1497,7 @@ document.addEventListener('DOMContentLoaded', () => {
         stickerId,
         packName,
         author,
-        stickerUrl,
+        fullStickerUrl,
         JSON.stringify(emojis)
       );
 
@@ -1419,14 +1512,52 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // 2. Standard Mobile Browser (Android Chrome, iOS Safari)
-    allBtnTexts.forEach(t => { t.textContent = 'Saving sticker...'; });
-    allButtons.forEach(b => b.classList.add('opacity-80', 'pointer-events-none'));
+    // 2. If running in Android Mobile Browser (Chrome, Samsung Internet, Brave, etc.):
+    // Invoke the TwitSticker app's StickerContentProvider via twitsticker://add deep link so WhatsApp adds it as a real sticker pack (NOT a photo!)
+    if (isAndroidBrowser) {
+      allBtnTexts.forEach(t => { t.textContent = 'Adding Sticker Pack to WhatsApp...'; });
+      allButtons.forEach(b => b.classList.add('opacity-80', 'pointer-events-none'));
 
+      const deepLink = `twitsticker://add?stickerId=${encodeURIComponent(stickerId)}&url=${encodeURIComponent(fullStickerUrl)}&packName=${encodeURIComponent(packName)}&author=${encodeURIComponent(author)}&emojis=${encodeURIComponent(JSON.stringify(emojis))}`;
+
+      let appLaunched = false;
+      const onVisChange = () => {
+        if (document.hidden) appLaunched = true;
+      };
+      document.addEventListener('visibilitychange', onVisChange);
+
+      window.location.href = deepLink;
+
+      setTimeout(() => {
+        document.removeEventListener('visibilitychange', onVisChange);
+        allButtons.forEach(b => b.classList.remove('opacity-80', 'pointer-events-none'));
+        allBtnTexts.forEach(t => { t.textContent = originalText; });
+
+        // If browser did not switch to TwitSticker app, prompt 1-time bridge install or .wastickers pack import (never send as photo)
+        if (!appLaunched && !document.hidden) {
+          openStickerBridgeModal('mobile', state.lastResult);
+        }
+      }, 1800);
+      return;
+    }
+
+    // 3. If running on iOS Browser: download .wastickers pack (for Sticker Maker) + show mobile pack modal
+    if (isIosBrowser) {
+      const a = document.createElement('a');
+      a.href = state.lastResult.packUrl || state.lastResult.downloadUrl || stickerUrl;
+      a.download = `whatsapp-sticker-pack-${stickerId.slice(0, 8)}.wastickers`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      openStickerBridgeModal('mobile', state.lastResult);
+      return;
+    }
+
+    // 4. Desktop Browser (Windows / Mac / Linux):
+    // Download the .webp sticker and open the True Sticker modal (WhatsApp Web Drag & Drop + 1-Scan Phone Sync QR)
+    // Do NOT launch whatsapp:// Windows Desktop app or instruct "+ Create", as both convert animated WebPs into static photos!
     try {
       const fileName = `whatsapp-sticker-${stickerId.slice(0, 8)}.webp`;
-
-      // Step 1: Trigger clean download of the WebP sticker file
       const a = document.createElement('a');
       a.href = state.lastResult.downloadUrl || stickerUrl;
       a.download = fileName;
@@ -1434,26 +1565,9 @@ document.addEventListener('DOMContentLoaded', () => {
       a.click();
       document.body.removeChild(a);
 
-      allBtnTexts.forEach(t => { t.textContent = 'Sticker Saved! Opening WhatsApp...'; });
-
-      // Step 2: Open WhatsApp
-      setTimeout(() => {
-        window.location.href = 'whatsapp://';
-      }, 700);
-
-      setTimeout(() => {
-        allBtnTexts.forEach(t => { t.textContent = 'In WhatsApp: Tap Stickers 🏷️ ➔ + Create'; });
-        allButtons.forEach(b => b.classList.remove('opacity-80', 'pointer-events-none'));
-      }, 2200);
-
-      setTimeout(() => {
-        allBtnTexts.forEach(t => { t.textContent = originalText; });
-      }, 7000);
-
+      openStickerBridgeModal('desktop', state.lastResult);
     } catch (err) {
-      console.warn('Native add to WhatsApp handled:', err);
-      allButtons.forEach(b => b.classList.remove('opacity-80', 'pointer-events-none'));
-      allBtnTexts.forEach(t => { t.textContent = originalText; });
+      console.warn('Desktop sticker save handled:', err);
     }
   }
 
@@ -1484,14 +1598,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Handle Shared Tweet URL from Android System Share Sheet
+  // Handle Shared URL or twitsticker://add deep link from Android Browser / System Share Sheet
   window.handleSharedUrl = function(sharedUrl) {
     if (!sharedUrl) return;
+
+    // If invoked via twitsticker://add?... from mobile browser, immediately add to WhatsApp Sticker Pack!
+    if (sharedUrl.startsWith('twitsticker://add')) {
+      try {
+        const qIndex = sharedUrl.indexOf('?');
+        const params = new URLSearchParams(qIndex !== -1 ? sharedUrl.slice(qIndex) : '');
+        const sId = params.get('stickerId') || ('sticker_' + Date.now());
+        const sUrl = params.get('url');
+        const pName = params.get('packName') || 'TwitSticker';
+        const pAuthor = params.get('author') || 'gifsticker.site';
+        const pEmojis = params.get('emojis') || '["🔥","✨"]';
+
+        if (sUrl && window.TwitStickerNative && window.TwitStickerNative.addStickerToWhatsApp) {
+          window.TwitStickerNative.addStickerToWhatsApp(sId, pName, pAuthor, sUrl, pEmojis);
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to handle twitsticker://add deep link:', e);
+      }
+    }
+
     if (tweetUrlInput) {
       tweetUrlInput.value = sharedUrl;
       if (tabLinkBtn) tabLinkBtn.click();
       if (fetchBtn) fetchBtn.click();
     }
   };
+
+  // If page was opened with ?autoadd=1 (e.g. from Desktop QR code scan on phone), automatically trigger sticker add once loaded
+  if (searchParams.get('autoadd') === '1') {
+    setTimeout(() => {
+      if (state.lastResult) {
+        handleSaveStickerToWhatsApp();
+      }
+    }, 900);
+  }
 });
 

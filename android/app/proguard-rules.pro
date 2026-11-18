@@ -10,9 +10,11 @@
 -keepattributes SourceFile,LineNumberTable
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
 
-# OkHttp rules
+# OkHttp & Firebase rules
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn javax.annotation.**
 -keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
 

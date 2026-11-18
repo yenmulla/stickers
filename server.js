@@ -53,6 +53,29 @@ const upload = multer({
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve signed Release APK before express.static so /download/twitsticker.apk is never shadowed or browser-cached
+app.get(['/download/twitsticker.apk', '/api/app/download'], (req, res) => {
+  const releaseApkPath = path.resolve(__dirname, 'android/app/build/outputs/apk/release/app-release.apk');
+  const bundledPublicApkPath = path.resolve(PUBLIC_DIR, 'download/twitsticker.apk');
+  const apkPath = fs.existsSync(releaseApkPath) ? releaseApkPath : bundledPublicApkPath;
+
+  if (!fs.existsSync(apkPath)) {
+    return res.status(404).json({ error: 'TwitSticker Release APK not found or still compiling.' });
+  }
+  const stat = fs.statSync(apkPath);
+  res.writeHead(200, {
+    'Content-Type': 'application/vnd.android.package-archive',
+    'Content-Length': stat.size,
+    'Content-Disposition': 'attachment; filename="TwitSticker-v1.0.3.apk"',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  const readStream = fs.createReadStream(apkPath);
+  readStream.pipe(res);
+});
+
 app.use(express.static(PUBLIC_DIR));
 
 // In-memory sliding rate limiter to prevent abuse during traffic spikes
@@ -163,23 +186,23 @@ function touchCachedFiles(stickerId) {
   });
 }
 
-// 1. Extract tweet or video URL
+// 1. Extract GIF, video, or social post URL
 app.post('/api/extract', rateLimit({ windowMs: 60 * 1000, max: 30, message: 'Too many extraction requests. Please wait a moment.' }), async (req, res) => {
   try {
     const { url } = req.body;
     if (!url || typeof url !== 'string') {
-      return res.status(400).json({ error: 'Please provide a valid Twitter/X or video URL' });
+      return res.status(400).json({ error: 'Please provide a valid GIF, video, or post URL' });
     }
 
     const mediaInfo = await resolveMedia(url);
     res.json(mediaInfo);
   } catch (err) {
     console.error('Extraction error:', err.message);
-    res.status(400).json({ error: err.message || 'Failed to extract video from tweet' });
+    res.status(400).json({ error: err.message || 'Failed to extract GIF or video from link' });
   }
 });
 
-// 1.1 Media Proxy endpoint (bypasses Twitter CDN 403 hotlinking block for video/image previews)
+// 1.1 Media Proxy endpoint (bypasses CDN 403 hotlinking blocks for video/GIF previews)
 app.get('/api/proxy-media', (req, res) => {
   const mediaUrl = req.query.url;
   if (!mediaUrl || typeof mediaUrl !== 'string') {
@@ -198,14 +221,18 @@ app.get('/api/proxy-media', (req, res) => {
   }
 
   const client = parsed.protocol === 'https:' ? https : http;
-  function makeProxyRequest(withReferer) {
+  const isTwitterCdn = parsed.hostname.includes('twimg.com') || parsed.hostname.includes('twitter.com') || parsed.hostname.includes('x.com');
+
+  function makeProxyRequest(attemptMode = 'default') {
     const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      'Accept': '*/*'
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept': 'image/avif,image/webp,image/apng,image/gif,video/*,*/*;q=0.8'
     };
 
-    if (withReferer && (parsed.hostname.includes('twimg.com') || parsed.hostname.includes('twitter.com') || parsed.hostname.includes('x.com'))) {
+    if (attemptMode === 'default' && isTwitterCdn) {
       headers['Referer'] = 'https://twitter.com/';
+    } else if (attemptMode === 'alternate' && !isTwitterCdn) {
+      headers['Referer'] = `${parsed.origin}/`;
     }
 
     if (req.headers.range) {
@@ -222,15 +249,20 @@ app.get('/api/proxy-media', (req, res) => {
         return res.redirect(`/api/proxy-media?url=${encodeURIComponent(nextUrl)}`);
       }
 
-      // Retry without Referer if 403 Forbidden
-      if (proxyRes.statusCode === 403 && withReferer) {
-        return makeProxyRequest(false);
+      // Retry with alternate Referer if 403 Forbidden
+      if (proxyRes.statusCode === 403 && attemptMode === 'default') {
+        proxyRes.resume();
+        return makeProxyRequest('alternate');
       }
+
+      const fallbackType = /\.gif(\?|$)/i.test(mediaUrl)
+        ? 'image/gif'
+        : (/\.webp(\?|$)/i.test(mediaUrl) ? 'image/webp' : 'video/mp4');
 
       const responseHeaders = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Range, Origin, Content-Type, Accept',
-        'Content-Type': proxyRes.headers['content-type'] || 'video/mp4',
+        'Content-Type': proxyRes.headers['content-type'] || fallbackType,
         'Accept-Ranges': 'bytes'
       };
 
@@ -263,7 +295,7 @@ app.get('/api/proxy-media', (req, res) => {
     proxyReq.end();
   }
 
-  makeProxyRequest(true);
+  makeProxyRequest('default');
 });
 
 // 2. Convert to WhatsApp sticker
@@ -579,22 +611,6 @@ app.get(['/sticker/:id', '/s/:id'], (req, res) => {
   }
 });
 
-// 3.2 Download TwitSticker Android App (APK)
-app.get(['/download/twitsticker.apk', '/api/app/download'], (req, res) => {
-  const apkPath = path.resolve(__dirname, 'android/app/build/outputs/apk/debug/app-debug.apk');
-  if (!fs.existsSync(apkPath)) {
-    return res.status(404).json({ error: 'TwitSticker APK not found or still compiling.' });
-  }
-  const stat = fs.statSync(apkPath);
-  res.writeHead(200, {
-    'Content-Type': 'application/vnd.android.package-archive',
-    'Content-Length': stat.size,
-    'Content-Disposition': 'attachment; filename="TwitSticker.apk"'
-  });
-  const readStream = fs.createReadStream(apkPath);
-  readStream.pipe(res);
-});
-
 // 4. Sample clips endpoint
 app.get('/api/samples', (req, res) => {
   const samples = [
@@ -664,6 +680,7 @@ function cleanDirectory(dir, maxAgeMs) {
     if (err || !files) return;
     const now = Date.now();
     files.forEach(file => {
+      if (file === '.gitkeep') return;
       const filePath = path.join(dir, file);
       fs.stat(filePath, (err, stats) => {
         if (!err && (now - stats.mtimeMs) > maxAgeMs) {
