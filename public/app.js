@@ -1424,6 +1424,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hideStickerBridgeModal() {
     if (stickerBridgeModal) stickerBridgeModal.classList.add('hidden');
+    document.body.style.overflow = '';
+    window.scrollTo({ left: 0, top: window.scrollY });
   }
   if (closeStickerBridgeModal) closeStickerBridgeModal.addEventListener('click', hideStickerBridgeModal);
   if (doneStickerBridgeBtn) doneStickerBridgeBtn.addEventListener('click', hideStickerBridgeModal);
@@ -1435,6 +1437,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openStickerBridgeModal(mode, result) {
     if (!stickerBridgeModal) return;
+    window.scrollTo({ left: 0, top: window.scrollY });
+    document.body.style.overflow = 'hidden';
     if (bridgeDownloadPackBtn && result && result.packUrl) {
       bridgeDownloadPackBtn.href = result.packUrl;
       bridgeDownloadPackBtn.setAttribute('download', `whatsapp-sticker-pack-${result.stickerId.slice(0, 8)}.wastickers`);

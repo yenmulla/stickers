@@ -7,7 +7,17 @@
   --sar: env(safe-area-inset-right, 0px);
 }
 
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  position: relative;
   padding-top: 0;
   padding-bottom: var(--sab);
   padding-left: var(--sal);
@@ -116,11 +126,9 @@ button:active, a:active {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -128,18 +136,22 @@ button:active, a:active {
   animation: fadeIn 0.25s ease-out forwards;
 }
 
-/* Mobile Bottom Sheet Modal */
+/* Mobile Modal Layout - Centered & Full Viewport Safe */
 @media (max-width: 640px) {
   .modal-sheet {
-    align-items: flex-end !important;
-    padding: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
   }
   
   .modal-sheet > div {
-    border-bottom-left-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
-    max-height: 90vh !important;
-    padding-bottom: max(20px, var(--sab)) !important;
+    border-radius: 20px !important;
+    max-height: 88vh !important;
+    max-height: 88dvh !important;
+    overflow-y: auto !important;
     width: 100% !important;
     max-width: 100% !important;
   }

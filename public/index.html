@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>TwitSticker - Convert Twitter & X Videos to WhatsApp Stickers (Free Online Maker)</title>
   <meta name="description" content="Free online Twitter to WhatsApp sticker maker. Convert Twitter/X videos, animated GIFs, and memes into official 512x512 transparent animated WhatsApp stickers under 500 KB with custom EXIF metadata. Works on Android, iPhone, and WhatsApp Web.">
   <meta name="keywords" content="twitter to whatsapp sticker, convert twitter video to whatsapp sticker, x video to sticker, turn twitter gif into whatsapp sticker, animated sticker maker, free whatsapp sticker generator, twitter meme to sticker, turn twitter video into sticker, 512x512 webp sticker, whatsapp animated stickers under 500kb, save twitter video as sticker, convert x video to gif sticker, mp4 to whatsapp sticker, download twitter gif as sticker, twitsticker, gifsticker site, online sticker maker no watermark, whatsapp sticker pack creator, transparent animated sticker maker, how to make stickers from twitter, video to animated webp, create whatsapp moving stickers, web whatsapp sticker creator">
@@ -186,7 +186,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
-<body class="bg-[#0b0e14] text-slate-100 min-h-screen flex flex-col font-['Inter'] antialiased selection:bg-[#25D366] selection:text-black">
+<body class="bg-[#0b0e14] text-slate-100 min-h-screen w-full max-w-full overflow-x-hidden flex flex-col font-['Inter'] antialiased selection:bg-[#25D366] selection:text-black">
 
   <!-- Glow background elements -->
   <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10">
@@ -261,7 +261,7 @@
   </header>
 
   <!-- Main Content Container -->
-  <main class="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8 w-full">
+  <main class="flex-1 max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8 w-full max-w-full overflow-x-hidden">
 
     <!-- Top Leaderboard Ad Slot (Adsterra Native Banner) -->
     <div class="ad-slot-wrapper w-full flex flex-col items-center justify-center mb-4 sm:mb-6">
@@ -579,10 +579,10 @@
           </span>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start w-full">
           
           <!-- Left: Interactive Sticker Preview & WhatsApp Chat Mockup (5 Cols) -->
-          <div class="lg:col-span-5 flex flex-col items-center">
+          <div class="lg:col-span-5 min-w-0 w-full flex flex-col items-center">
             <div class="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col items-center">
               
               <!-- Preview Controls Bar -->
@@ -660,7 +660,7 @@
           </div>
 
           <!-- Right: How to Send as Sticker Action Hub (7 Cols) -->
-          <div class="lg:col-span-7 space-y-4">
+          <div class="lg:col-span-7 min-w-0 w-full space-y-4">
             
             <!-- Prominent Primary Save & Open WhatsApp Box (Always right at top!) -->
             <div id="primarySaveActionBox" class="p-4 sm:p-5 rounded-2xl bg-gradient-to-b from-emerald-950/80 via-slate-900 to-slate-950 border-2 border-[#25D366] shadow-xl shadow-[#25D366]/25 space-y-3">
@@ -1118,6 +1118,8 @@
       </div>
     </div>
 
+  </main>
+
     <!-- Google Play Closed Alpha Tester Modal -->
     <div id="alphaTesterModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 modal-sheet">
       <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 max-w-md w-full text-left space-y-4 shadow-2xl relative">
@@ -1365,8 +1367,6 @@
         </button>
       </div>
     </div>
-
-  </main>
 
   <!-- Footer -->
   <footer class="border-t border-slate-800/80 py-6 mt-12 bg-slate-950/60 text-center text-xs text-slate-500">
