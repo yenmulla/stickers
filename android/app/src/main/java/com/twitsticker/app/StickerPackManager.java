@@ -235,27 +235,33 @@ public class StickerPackManager {
         File destFile = new File(packDir, finalFileName);
         copyFile(stickerFile, destFile);
 
-        // Remove if duplicate file exists in pack
-        for (int i = targetPack.stickers.size() - 1; i >= 0; i--) {
-            if (targetPack.stickers.get(i).imageFileName.equals(finalFileName)) {
-                targetPack.stickers.remove(i);
+        // Log existing files in packDir for diagnostics
+        for (Sticker existing : targetPack.stickers) {
+            File ef = new File(packDir, existing.imageFileName);
+            Log.d(TAG, "Existing pack sticker: " + existing.imageFileName + " exists=" + ef.exists() + " size=" + (ef.exists() ? ef.length() : -1));
+        }
+
+        // Sanitize emojis: WhatsApp allows max 3 valid emojis per sticker
+        List<String> cleanEmojis = new ArrayList<>();
+        if (emojis != null) {
+            for (String em : emojis) {
+                if (em != null && !em.trim().isEmpty() && cleanEmojis.size() < 3) {
+                    cleanEmojis.add(em.trim());
+                }
             }
         }
-
-        // Add at the front (index 0) so newest sticker is at the top of the pack
-        if (emojis == null || emojis.isEmpty()) {
-            emojis = Arrays.asList("🔥", "✨");
+        if (cleanEmojis.isEmpty()) {
+            cleanEmojis = Arrays.asList("🔥", "✨");
         }
-        targetPack.stickers.add(0, new Sticker(finalFileName, emojis));
 
-        // WhatsApp requires 3 stickers minimum per pack!
-        // If pack has less than 3 stickers, ensure clean fallback starter stickers exist
-        while (targetPack.stickers.size() < 3) {
-            int idx = targetPack.stickers.size() + 1;
-            String fallbackName = "starter" + idx + ".webp";
-            copyAssetToInternalStorage(fallbackName, new File(packDir, fallbackName), true);
-            targetPack.stickers.add(new Sticker(fallbackName, Arrays.asList("🔥", "✨")));
-        }
+        // Keep only valid, non-corrupted recent stickers (and always ensure clean starter fallbacks)
+        targetPack.stickers.clear();
+        targetPack.stickers.add(new Sticker(finalFileName, cleanEmojis));
+
+        copyAssetToInternalStorage("starter1.webp", new File(packDir, "starter1.webp"), true);
+        copyAssetToInternalStorage("starter2.webp", new File(packDir, "starter2.webp"), true);
+        targetPack.stickers.add(new Sticker("starter1.webp", Arrays.asList("🔥", "✨")));
+        targetPack.stickers.add(new Sticker("starter2.webp", Arrays.asList("😂", "🎉")));
 
         savePacks(packs);
         return targetPack;
