@@ -646,6 +646,109 @@ app.get('/api/samples', (req, res) => {
   res.json({ samples });
 });
 
+// 5. Play Store Closed Alpha Tester Email Signup (writes to Firestore + local JSON backup)
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'app-92db9b7e';
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || 'AIzaSyAKruh-12KoN4O2Qdn_3huLFE5D9lxgxjU';
+const ALPHA_TESTERS_FILE = path.join(__dirname, 'alpha-testers.json');
+
+function saveAlphaTesterLocal(entry) {
+  let list = [];
+  try {
+    if (fs.existsSync(ALPHA_TESTERS_FILE)) {
+      list = JSON.parse(fs.readFileSync(ALPHA_TESTERS_FILE, 'utf8'));
+      if (!Array.isArray(list)) list = [];
+    }
+  } catch (e) {
+    list = [];
+  }
+  const existingIdx = list.findIndex(item => item.email === entry.email);
+  if (existingIdx >= 0) {
+    list[existingIdx] = { ...list[existingIdx], ...entry, updatedAt: new Date().toISOString() };
+  } else {
+    list.push(entry);
+  }
+  fs.writeFileSync(ALPHA_TESTERS_FILE, JSON.stringify(list, null, 2), 'utf8');
+}
+
+function writeAlphaTesterToFirestore(entry) {
+  return new Promise((resolve) => {
+    const docId = entry.email.replace(/[^a-z0-9@._-]/gi, '_').slice(0, 120);
+    const payload = JSON.stringify({
+      fields: {
+        email: { stringValue: entry.email },
+        status: { stringValue: 'pending' },
+        source: { stringValue: entry.source || 'website_popup' },
+        createdAt: { timestampValue: entry.createdAt }
+      }
+    });
+
+    const req = https.request(
+      {
+        hostname: 'firestore.googleapis.com',
+        path: `/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/alpha_testers/${encodeURIComponent(docId)}?key=${FIREBASE_API_KEY}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        },
+        timeout: 8000
+      },
+      (res) => {
+        let body = '';
+        res.on('data', chunk => (body += chunk));
+        res.on('end', () => {
+          resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, body });
+        });
+      }
+    );
+
+    req.on('error', (err) => resolve({ ok: false, error: err.message }));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ ok: false, error: 'timeout' });
+    });
+    req.write(payload);
+    req.end();
+  });
+}
+
+app.post('/api/alpha-signup', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too many signup requests. Please wait a minute.' }), async (req, res) => {
+  try {
+    const rawEmail = (req.body && req.body.email ? String(req.body.email) : '').trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!rawEmail || !emailRegex.test(rawEmail)) {
+      return res.status(400).json({ error: 'Please provide a valid Google Play Store email address.' });
+    }
+
+    const entry = {
+      email: rawEmail,
+      status: 'pending',
+      source: (req.body && req.body.source ? String(req.body.source) : 'website_popup').slice(0, 100),
+      createdAt: new Date().toISOString()
+    };
+
+    // Persist locally as guaranteed backup
+    saveAlphaTesterLocal(entry);
+
+    // Write to Cloud Firestore if not already saved by client
+    let firestoreResult = { ok: Boolean(req.body && req.body.clientFirestoreSaved), via: 'client' };
+    if (!firestoreResult.ok) {
+      firestoreResult = await writeAlphaTesterToFirestore(entry);
+    }
+
+    return res.json({
+      success: true,
+      email: rawEmail,
+      storedInFirestore: Boolean(firestoreResult.ok),
+      firestoreStatus: firestoreResult.status || null,
+      officialSender: 'updates@gifsticker.site'
+    });
+  } catch (err) {
+    console.error('[AlphaSignup] Error:', err);
+    return res.status(500).json({ error: 'Failed to save alpha tester email.' });
+  }
+});
+
 // Health Check endpoint with memory & queue stats for monitoring
 app.get(['/healthz', '/api/health'], (req, res) => {
   const mem = process.memoryUsage();

@@ -374,11 +374,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Closed Alpha Modal & Banner
   const alphaNoticeBanner = document.getElementById('alphaNoticeBanner');
   const closeAlphaBannerBtn = document.getElementById('closeAlphaBannerBtn');
+  const openAlphaBannerCtaBtn = document.getElementById('openAlphaBannerCtaBtn');
   const openAlphaModalBtn = document.getElementById('openAlphaModalBtn');
   const openAlphaNavBtn = document.getElementById('openAlphaNavBtn');
   const alphaTesterModal = document.getElementById('alphaTesterModal');
   const closeAlphaModal = document.getElementById('closeAlphaModal');
-  const alphaTelegramBtn = document.getElementById('alphaTelegramBtn');
+  const alphaSignupForm = document.getElementById('alphaSignupForm');
+  const alphaEmailInput = document.getElementById('alphaEmailInput');
+  const alphaSubmitBtn = document.getElementById('alphaSubmitBtn');
+  const alphaSubmitBtnText = document.getElementById('alphaSubmitBtnText');
+  const alphaFeedbackBox = document.getElementById('alphaFeedbackBox');
+  const alphaFeedbackTitle = document.getElementById('alphaFeedbackTitle');
+  const alphaFeedbackMsg = document.getElementById('alphaFeedbackMsg');
 
   // History Modal
   const viewHistoryBtn = document.getElementById('viewHistoryBtn');
@@ -1113,24 +1120,136 @@ document.addEventListener('DOMContentLoaded', () => {
   if (doneQrBtn) doneQrBtn.addEventListener('click', () => qrModal && qrModal.classList.add('hidden'));
 
   // ================= CLOSED ALPHA MODAL & BANNER =================
-  function openAlphaModal() {
+  const FIRESTORE_PROJECT_ID = 'app-92db9b7e';
+  const FIRESTORE_API_KEY = 'AIzaSyAKruh-12KoN4O2Qdn_3huLFE5D9lxgxjU';
+
+  function openAlphaModal(trigger = 'click') {
     if (alphaTesterModal) {
       alphaTesterModal.classList.remove('hidden');
-      trackEvent('open_alpha_modal', { trigger: 'click' });
+      trackEvent('open_alpha_modal', { trigger });
+      try {
+        const prevEmail = localStorage.getItem('twit_alpha_submitted_email_v1');
+        if (prevEmail && alphaEmailInput && !alphaEmailInput.value) {
+          alphaEmailInput.value = prevEmail;
+        }
+      } catch (e) {}
       if (window.lucide) window.lucide.createIcons();
     }
   }
 
   function hideAlphaModal() {
     if (alphaTesterModal) alphaTesterModal.classList.add('hidden');
+    try {
+      localStorage.setItem('twit_alpha_popup_seen_v1', 'true');
+    } catch (e) {}
   }
 
-  if (openAlphaModalBtn) openAlphaModalBtn.addEventListener('click', openAlphaModal);
-  if (openAlphaNavBtn) openAlphaNavBtn.addEventListener('click', openAlphaModal);
+  if (openAlphaModalBtn) openAlphaModalBtn.addEventListener('click', () => openAlphaModal('button'));
+  if (openAlphaNavBtn) openAlphaNavBtn.addEventListener('click', () => openAlphaModal('nav'));
+  if (openAlphaBannerCtaBtn) openAlphaBannerCtaBtn.addEventListener('click', () => openAlphaModal('banner'));
   if (closeAlphaModal) closeAlphaModal.addEventListener('click', hideAlphaModal);
   if (alphaTesterModal) {
     alphaTesterModal.addEventListener('click', (e) => {
       if (e.target === alphaTesterModal) hideAlphaModal();
+    });
+  }
+
+  // Show popup automatically when users open the site for the first time
+  const isRunningInNativeApp = typeof window.TwitStickerNative !== 'undefined' || /TwitStickerApp/i.test(navigator.userAgent);
+  if (!isRunningInNativeApp) {
+    try {
+      const seenPopup = localStorage.getItem('twit_alpha_popup_seen_v1');
+      const submittedEmail = localStorage.getItem('twit_alpha_submitted_email_v1');
+      if (!seenPopup && !submittedEmail) {
+        setTimeout(() => {
+          openAlphaModal('first_visit_auto');
+          try {
+            localStorage.setItem('twit_alpha_popup_seen_v1', 'true');
+          } catch (e) {}
+        }, 650);
+      }
+    } catch (e) {}
+  }
+
+  async function saveAlphaEmailToFirestoreClient(email) {
+    const docId = email.replace(/[^a-z0-9@._-]/gi, '_').slice(0, 120);
+    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/alpha_testers/${encodeURIComponent(docId)}?key=${FIRESTORE_API_KEY}`;
+    const res = await fetch(firestoreUrl, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          email: { stringValue: email },
+          status: { stringValue: 'pending' },
+          source: { stringValue: window.location.hostname || 'website_popup' },
+          userAgent: { stringValue: (navigator.userAgent || '').slice(0, 200) },
+          createdAt: { timestampValue: new Date().toISOString() }
+        }
+      })
+    });
+    return res.ok;
+  }
+
+  if (alphaSignupForm) {
+    alphaSignupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!alphaEmailInput) return;
+
+      const email = alphaEmailInput.value.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || !emailRegex.test(email)) {
+        showToast('Please enter a valid Google Play Store email address.', 'error');
+        alphaEmailInput.focus();
+        return;
+      }
+
+      if (alphaSubmitBtn) alphaSubmitBtn.disabled = true;
+      if (alphaSubmitBtnText) alphaSubmitBtnText.textContent = 'Submitting to Play Store Alpha List...';
+
+      let savedBackend = false;
+      let savedClientFirestore = false;
+
+      // 1. Try direct Firestore write from client
+      try {
+        savedClientFirestore = await saveAlphaEmailToFirestoreClient(email);
+      } catch (err) {}
+
+      // 2. Also submit to backend endpoint (/api/alpha-signup) which writes to Firestore & local backup
+      try {
+        const res = await fetch('/api/alpha-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            source: window.location.hostname || 'website_popup',
+            clientFirestoreSaved: savedClientFirestore
+          })
+        });
+        if (res.ok) savedBackend = true;
+      } catch (err) {}
+
+      try {
+        localStorage.setItem('twit_alpha_submitted_email_v1', email);
+        localStorage.setItem('twit_alpha_popup_seen_v1', 'true');
+      } catch (err) {}
+
+      trackEvent('alpha_email_submitted', {
+        firestore: savedClientFirestore,
+        backend: savedBackend
+      });
+
+      if (alphaFeedbackBox) {
+        alphaFeedbackBox.className = 'rounded-xl p-3.5 text-xs border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 block';
+      }
+      if (alphaFeedbackTitle) {
+        alphaFeedbackTitle.textContent = '✓ Play Store Email Registered!';
+      }
+      if (alphaFeedbackMsg) {
+        alphaFeedbackMsg.innerHTML = `We received <strong class="text-white">${email}</strong>. Once approved on Google Play Console, you will receive an official email from <strong class="text-amber-300 font-mono">updates@gifsticker.site</strong>. Please <strong>only trust emails from updates@gifsticker.site</strong>.`;
+      }
+
+      if (alphaSubmitBtnText) alphaSubmitBtnText.textContent = 'Email Submitted for Alpha Approval ✓';
+      showToast('Play Store email submitted! Watch for updates@gifsticker.site', 'success');
     });
   }
 
@@ -1148,12 +1267,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (alphaNoticeBanner) alphaNoticeBanner.classList.add('hidden');
     }
   } catch (e) {}
-
-  if (alphaTelegramBtn) {
-    alphaTelegramBtn.addEventListener('click', () => {
-      trackEvent('telegram_alpha_click', { handle: '@moon_jeff' });
-    });
-  }
 
   const shareWaBtn = document.getElementById('shareWaBtn');
   if (shareWaBtn) {
