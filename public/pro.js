@@ -576,14 +576,18 @@
       if (!proState.firebaseInitialized) {
         return setAuthError('Firebase Auth is not configured yet. Add FIREBASE_WEB_* env vars on the server.');
       }
-      // Inside the native Android app: launch native 1-tap Google Account Picker (no password typing!)
-      if (window.TwitStickerNative && typeof window.TwitStickerNative.signInWithGoogle === 'function') {
-        try {
-          window.TwitStickerNative.signInWithGoogle();
-          return;
-        } catch (nativeErr) {
-          console.warn('[TwitPro] Native Google Sign-In bridge failed, falling back:', nativeErr);
+      const isNativeAndroid = Boolean(window.TwitStickerNative) || /TwitStickerApp/i.test(navigator.userAgent || '');
+      // Inside the native Android app: ALWAYS use the native 1-tap Google Account Picker (never WebView popup!)
+      if (isNativeAndroid) {
+        if (window.TwitStickerNative && typeof window.TwitStickerNative.signInWithGoogle === 'function') {
+          try {
+            window.TwitStickerNative.signInWithGoogle();
+            return;
+          } catch (nativeErr) {
+            return setAuthError('Native Google Sign-In error: ' + (nativeErr.message || nativeErr));
+          }
         }
+        return setAuthError('Please install the latest TwitSticker app update (v1.0.4+) for 1-tap Google Sign-In, or sign in with Email below.');
       }
       try {
         const provider = new window.firebase.auth.GoogleAuthProvider();

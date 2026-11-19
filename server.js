@@ -117,7 +117,13 @@ app.get(['/download/twitsticker.apk', '/api/app/download'], (req, res) => {
   readStream.pipe(res);
 });
 
-app.use(express.static(PUBLIC_DIR));
+app.use(express.static(PUBLIC_DIR, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+  }
+}));
 
 // In-memory sliding rate limiter (tier-aware: Pro users get higher limits)
 const ipRequestCounts = new Map();
