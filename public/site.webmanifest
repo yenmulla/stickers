@@ -1,0 +1,26 @@
+{
+  "name": "TwitSticker - GIF & Video to WhatsApp Sticker Maker",
+  "short_name": "TwitSticker",
+  "description": "Free online converter to turn Twitter/X, GIPHY, Tenor, Reddit, Imgur, and MP4/GIF files into 512x512 animated WhatsApp stickers under 500 KB.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14",
+  "orientation": "portrait-primary",
+  "categories": ["utilities", "photo", "social"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

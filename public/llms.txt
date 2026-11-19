@@ -1,41 +1,42 @@
 # TwitSticker (gifsticker.site)
 
-> Free online Twitter & X video to WhatsApp animated sticker converter. Turn viral Twitter/X videos, animated GIFs, and memes into transparent 512x512 animated WhatsApp stickers under 500 KB in 1 click.
+> Free online GIF & video to WhatsApp animated sticker converter. Turn Twitter/X videos, GIPHY, Tenor, Reddit, Imgur, Discord, Pinterest links, or local MP4/WebM/MOV/GIF files into official 512x512 transparent animated WhatsApp stickers under 500 KB in 1 click.
 
-## Target Search Queries & Keywords
-- twitter to whatsapp sticker
-- convert twitter video to whatsapp sticker
-- x video to sticker maker
-- turn twitter gif into whatsapp sticker
-- animated sticker maker 512x512
-- whatsapp animated stickers under 500kb
-- free whatsapp sticker generator no watermark
-- save twitter video as whatsapp sticker
-- twitter meme to sticker
-- transparent animated webp sticker
-- whatsapp web sticker drag and drop
-- mp4 to whatsapp moving sticker
-- create whatsapp stickers from twitter link
+## Target Search Queries & Topics
+- twitter to whatsapp sticker / convert twitter video to whatsapp sticker / x video to sticker
+- gif to whatsapp sticker / giphy to whatsapp sticker / tenor gif to whatsapp sticker
+- mp4 to whatsapp sticker / mov to whatsapp sticker / webm to whatsapp animated sticker
+- reddit video to whatsapp sticker / imgur gif to whatsapp sticker
+- animated whatsapp sticker maker online / 512x512 animated webp sticker generator
+- whatsapp sticker 500kb compressor / resize gif to 512x512 webp under 500kb
+- free whatsapp sticker creator no watermark / whatsapp web drag and drop sticker
+
+## Dedicated Converter Pages
+- [TwitSticker Home (All-in-One Converter)](https://gifsticker.site/): Convert any GIF, video link, or local upload to WhatsApp stickers.
+- [Twitter & X Video to WhatsApp Sticker](https://gifsticker.site/twitter-to-whatsapp-sticker): Convert public X/Twitter video and GIF posts into animated stickers.
+- [GIF, GIPHY & Tenor to WhatsApp Sticker](https://gifsticker.site/gif-to-whatsapp-sticker): Convert GIPHY, Tenor, Imgur, and animated GIFs to transparent WebP stickers.
+- [MP4 & Video to WhatsApp Sticker](https://gifsticker.site/mp4-to-whatsapp-sticker): Trim and convert local MP4, MOV, and WebM clips (up to 50 MB) into stickers.
+- [Reddit & Imgur to WhatsApp Sticker](https://gifsticker.site/reddit-to-whatsapp-sticker): Convert Reddit videos (`v.redd.it`), Imgur `.gifv`, Discord, and Pinterest clips.
+- [Animated WhatsApp Sticker Maker](https://gifsticker.site/whatsapp-animated-sticker-maker): Full studio with live Dark/Light WhatsApp preview, captions, borders, and boomerang loops.
+- [500 KB WhatsApp Sticker Compressor](https://gifsticker.site/whatsapp-sticker-500kb-compressor): Multi-pass 512x512 animated WebP compression guaranteed under 500 KB.
 
 ## Core Capabilities
-- **Twitter & X to WhatsApp Sticker Conversion**: Converts videos and animated GIFs from Twitter/X links into official 512x512 WebP animated stickers compliant with WhatsApp's strict size limit (< 500 KB).
-- **Embedded WhatsApp EXIF Metadata**: Injects custom sticker pack name, publisher author, and emoji tags into the WebP container for native WhatsApp keyboard recognition.
-- **WhatsApp Web & Desktop Drag-and-Drop**: 1-click download of .webp sticker files that drag and drop directly into WhatsApp Web chat to send as true animated stickers.
-- **Mobile 1-Tap Share & Add**: Native Web Share API integration to send stickers directly to WhatsApp on Android and iOS, ready to tap "Add to Favorites" (⭐) to save to the sticker keyboard.
-- **Direct Sticker Sharing**: Every converted sticker generates a shareable link at `https://gifsticker.site/sticker/<id>` with rich OpenGraph preview cards for social messaging apps.
-- **File Upload Support**: Convert local MP4, WebM, MOV, and GIF files directly without needing a Twitter link.
+- **Multi-Platform Link Extraction**: Resolves Twitter/X, GIPHY, Tenor, Reddit, Imgur, Discord, Pinterest, and direct `.gif` / `.mp4` / `.webp` URLs without requiring any social media login.
+- **Local Video & GIF Uploads**: Convert local MP4, WebM, MOV, GIF, and WebP files up to 50 MB.
+- **Strict WhatsApp Spec Compliance**: Exact 512x512 pixel resolution, alpha transparency padding or square crop, adaptive multi-pass libwebp compression strictly under 500 KB, infinite looping.
+- **Embedded WhatsApp EXIF Metadata**: Injects valid WhatsApp sticker pack ID, pack name, publisher author, and emoji tags into the WebP container.
+- **Cross-Platform Export**: Drag-and-drop `.webp` for WhatsApp Web/Desktop, 1-tap mobile save + WhatsApp import, `.wastickers` pack download, and companion Android app.
+- **Free & Pro Tiers**: Free daily conversions with zero watermarks; optional TwitSticker Pro unlocks unlimited daily stickers, priority queue, 6s / 20 FPS clips, meme text captions, white outline/rounded/circle borders, reverse/boomerang loops, custom EXIF branding, and an ad-free studio.
 
-## Key Links & Resources
-- [TwitSticker Home](https://gifsticker.site/): Web app and converter interface.
-- [Sitemap](https://gifsticker.site/sitemap.xml): XML sitemap for search crawlers.
-- [Robots](https://gifsticker.site/robots.txt): Crawler permissions and index directives.
-- [Ads.txt](https://gifsticker.site/ads.txt): Authorized digital sellers declaration.
-- [Android App APK](https://gifsticker.site/download/twitsticker.apk): Companion Android application for direct 1-tap WhatsApp installation.
-
-## Technical Specifications for WhatsApp Stickers
+## Technical Specifications for WhatsApp Animated Stickers
 - Resolution: Exactly 512x512 pixels
 - Format: Animated WebP (`image/webp`) with alpha transparency
-- Max Size: Under 500 KB total file size
-- Frame Rate: Optimized 9-16 FPS
-- Max Duration: 3.5 seconds recommended for smooth infinite loop
+- Max File Size: Strictly under 500 KB (including EXIF metadata)
+- Frame Rate: 10–14 FPS (Free), up to 20 FPS (Pro)
+- Recommended Duration: 2.0–3.5 seconds (up to 6.0s on Pro; WhatsApp max 10s)
 
+## Additional Resources
+- [Privacy Policy](https://gifsticker.site/privacy.html)
+- [Sitemap](https://gifsticker.site/sitemap.xml)
+- [Robots](https://gifsticker.site/robots.txt)
+- [Support Email](mailto:support@gifsticker.site)

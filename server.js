@@ -35,6 +35,7 @@ const https = require('https');
 
 const { resolveMedia } = require('./services/twitterResolver');
 const { convertToSticker, MAX_WHATSAPP_SIZE } = require('./services/converter');
+const { SEO_SLUGS, renderSeoPage, renderSharedStickerPage } = require('./services/seoPages');
 const {
   getPublicConfig,
   optionalAuth,
@@ -117,13 +118,45 @@ app.get(['/download/twitsticker.apk', '/api/app/download'], (req, res) => {
   readStream.pipe(res);
 });
 
+// Baseline security & SEO headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use(express.static(PUBLIC_DIR, {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    } else if (/\.(png|jpg|jpeg|svg|webp|ico|woff2?)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+    } else if (/\.(css|js|webmanifest)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=3600');
     }
   }
 }));
+
+// Dedicated Server-Rendered SEO Landing Pages (canonical non-trailing-slash routes)
+const seoRoutePaths = SEO_SLUGS.map(slug => `/${slug}`);
+app.get(seoRoutePaths, (req, res) => {
+  // Redirect trailing slash to canonical URL (301 Permanent)
+  if (req.path.length > 1 && req.path.endsWith('/')) {
+    const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return res.redirect(301, req.path.slice(0, -1) + query);
+  }
+  const slug = req.path.replace(/^\/+|\/+$/g, '');
+  try {
+    const baseHtml = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
+    const rendered = renderSeoPage(baseHtml, slug);
+    if (!rendered) return res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+    return res.send(rendered);
+  } catch (e) {
+    return res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+  }
+});
 
 // In-memory sliding rate limiter (tier-aware: Pro users get higher limits)
 const ipRequestCounts = new Map();
@@ -821,7 +854,7 @@ app.get(['/sticker/:id', '/s/:id'], (req, res) => {
 
   touchCachedFiles(id);
   try {
-    let html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
+    const baseHtml = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8');
     const absoluteStickerUrl = `https://gifsticker.site/stickers/${id}.webp`;
     const shareUrl = `https://gifsticker.site/sticker/${id}`;
 
@@ -833,19 +866,19 @@ app.get(['/sticker/:id', '/s/:id'], (req, res) => {
       try {
         const info = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
         if (info.metadata && info.metadata.packName) {
-          title = `${info.metadata.packName} - WhatsApp Sticker`;
+          title = `${info.metadata.packName} - WhatsApp Sticker | TwitSticker`;
         }
       } catch (e) {}
     }
 
-    html = html.replace(/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${title}">`);
-    html = html.replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${desc}">`);
-    html = html.replace(/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${absoluteStickerUrl}">`);
-    html = html.replace(/<meta property="og:url" content="[^"]*">/, `<meta property="og:url" content="${shareUrl}">`);
-    html = html.replace(/<meta name="twitter:title" content="[^"]*">/, `<meta name="twitter:title" content="${title}">`);
-    html = html.replace(/<meta name="twitter:description" content="[^"]*">/, `<meta name="twitter:description" content="${desc}">`);
-    html = html.replace(/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${absoluteStickerUrl}">`);
+    const html = renderSharedStickerPage(baseHtml, {
+      title,
+      desc,
+      absoluteStickerUrl,
+      shareUrl
+    });
 
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (e) {
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
