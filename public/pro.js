@@ -703,6 +703,7 @@
   window.TwitPro = {
     isPro: () => Boolean(proState.isPro),
     getUser: () => proState.user,
+    getConfig: () => proState.config,
     getAuthHeaders,
     openAuthModal,
     openUpgradeModal,

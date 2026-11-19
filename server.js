@@ -882,8 +882,8 @@ app.get('/api/samples', (req, res) => {
 });
 
 // 5. Play Store Closed Alpha Tester Email Signup (writes to Firestore + local JSON backup)
-const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'app-92db9b7e';
-const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || 'AIzaSyAKruh-12KoN4O2Qdn_3huLFE5D9lxgxjU';
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.FIREBASE_WEB_PROJECT_ID || 'app-92db9b7e';
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || process.env.FIREBASE_WEB_API_KEY || '';
 const ALPHA_TESTERS_FILE = path.join(__dirname, 'alpha-testers.json');
 
 function saveAlphaTesterLocal(entry) {

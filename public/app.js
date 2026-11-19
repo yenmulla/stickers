@@ -1207,8 +1207,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (doneQrBtn) doneQrBtn.addEventListener('click', () => qrModal && qrModal.classList.add('hidden'));
 
   // ================= CLOSED ALPHA MODAL & BANNER =================
-  const FIRESTORE_PROJECT_ID = 'app-92db9b7e';
-  const FIRESTORE_API_KEY = 'AIzaSyAKruh-12KoN4O2Qdn_3huLFE5D9lxgxjU';
+  function getFirestoreConfig() {
+    const fb = window.TwitPro && window.TwitPro.getConfig && window.TwitPro.getConfig()?.firebase;
+    return {
+      projectId: (fb && fb.projectId) || '',
+      apiKey: (fb && fb.apiKey) || ''
+    };
+  }
 
   function openAlphaModal(trigger = 'click') {
     if (alphaTesterModal) {
@@ -1260,6 +1265,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function saveAlphaEmailToFirestoreClient(email) {
     const docId = email.replace(/[^a-z0-9@._-]/gi, '_').slice(0, 120);
+    const { projectId: FIRESTORE_PROJECT_ID, apiKey: FIRESTORE_API_KEY } = getFirestoreConfig();
+    if (!FIRESTORE_PROJECT_ID || !FIRESTORE_API_KEY) return false;
     const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/alpha_testers/${encodeURIComponent(docId)}?key=${FIRESTORE_API_KEY}`;
     const res = await fetch(firestoreUrl, {
       method: 'PATCH',

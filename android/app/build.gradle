@@ -25,9 +25,9 @@ android {
     signingConfigs {
         release {
             storeFile file('twitsticker-upload.jks')
-            storePassword 'twitsticker123'
-            keyAlias 'twitsticker'
-            keyPassword 'twitsticker123'
+            storePassword System.getenv('KEYSTORE_PASSWORD') ?: project.findProperty('KEYSTORE_PASSWORD') ?: ''
+            keyAlias System.getenv('KEY_ALIAS') ?: project.findProperty('KEY_ALIAS') ?: 'twitsticker'
+            keyPassword System.getenv('KEY_PASSWORD') ?: project.findProperty('KEY_PASSWORD') ?: ''
         }
     }
 
