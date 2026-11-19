@@ -383,6 +383,29 @@
       if (navUpgradeBtn) navUpgradeBtn.classList.remove('hidden');
     }
 
+    // Mobile navbar & drawer sync
+    const mobileNavUpgradeBtn = document.getElementById('mobileNavUpgradeBtn');
+    const mobileNavProPill = document.getElementById('mobileNavProPill');
+    const mobileAccountLoggedOut = document.getElementById('mobileAccountLoggedOut');
+    const mobileAccountLoggedIn = document.getElementById('mobileAccountLoggedIn');
+    const mobileUserEmail = document.getElementById('mobileUserEmail');
+    const mobileMenuProBadge = document.getElementById('mobileMenuProBadge');
+    const mobileAccountPlanText = document.getElementById('mobileAccountPlanText');
+
+    if (mobileNavUpgradeBtn) mobileNavUpgradeBtn.classList.toggle('hidden', proState.isPro);
+    if (mobileNavProPill) mobileNavProPill.classList.toggle('hidden', !proState.isPro);
+    if (mobileAccountLoggedOut) mobileAccountLoggedOut.classList.toggle('hidden', Boolean(proState.user));
+    if (mobileAccountLoggedIn) mobileAccountLoggedIn.classList.toggle('hidden', !proState.user);
+    if (proState.user) {
+      if (mobileUserEmail) mobileUserEmail.textContent = proState.user.displayName || proState.user.email || 'Account';
+      if (mobileMenuProBadge) mobileMenuProBadge.classList.toggle('hidden', !proState.isPro);
+      if (mobileAccountPlanText) {
+        mobileAccountPlanText.textContent = proState.isPro
+          ? 'Pro Member · Unlimited stickers'
+          : 'Free Plan · 4 stickers/day';
+      }
+    }
+
     const selectedPlan = getSelectedPlan();
     const checkoutBtnLabel = document.getElementById('paystackCheckoutBtnLabel');
     if (checkoutBtnLabel && selectedPlan) {
@@ -465,6 +488,43 @@
         await window.firebase.auth().signOut();
         showToast('Signed out.');
       }
+    });
+
+    // Mobile navbar & drawer handlers
+    const mobileDrawer = document.getElementById('mobileNavDrawer');
+    const closeMobileDrawer = () => mobileDrawer?.classList.add('hidden');
+
+    document.getElementById('mobileMenuToggleBtn')?.addEventListener('click', () => {
+      if (!mobileDrawer) return;
+      mobileDrawer.classList.toggle('hidden');
+      if (window.lucide) window.lucide.createIcons();
+    });
+    document.getElementById('mobileNavUpgradeBtn')?.addEventListener('click', () => {
+      closeMobileDrawer();
+      openUpgradeModal();
+    });
+    document.getElementById('mobileNavProPill')?.addEventListener('click', () => {
+      closeMobileDrawer();
+      openUpgradeModal();
+    });
+    document.getElementById('mobileSignInBtn')?.addEventListener('click', () => {
+      closeMobileDrawer();
+      openAuthModal();
+    });
+    document.getElementById('mobileSignOutBtn')?.addEventListener('click', async () => {
+      closeMobileDrawer();
+      if (proState.firebaseInitialized && window.firebase && window.firebase.auth) {
+        await window.firebase.auth().signOut();
+        showToast('Signed out.');
+      }
+    });
+    document.getElementById('mobileHistoryBtn')?.addEventListener('click', () => {
+      closeMobileDrawer();
+      document.getElementById('viewHistoryBtn')?.click();
+    });
+    document.getElementById('mobileAlphaBtn')?.addEventListener('click', () => {
+      closeMobileDrawer();
+      document.getElementById('openAlphaNavBtn')?.click();
     });
 
     document.getElementById('closeAuthModalBtn')?.addEventListener('click', () => closeModal('authModal'));
