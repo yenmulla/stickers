@@ -7,8 +7,44 @@ const os = require('os');
 const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
+
+// Load local .env file automatically if present (without overriding existing OS env vars)
+(function loadLocalEnv() {
+  const envPath = path.join(__dirname, '.env');
+  if (!fs.existsSync(envPath)) return;
+  try {
+    const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eqIdx = line.indexOf('=');
+      if (eqIdx === -1) continue;
+      const key = line.slice(0, eqIdx).trim();
+      let val = line.slice(eqIdx + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (key && !(key in process.env)) {
+        process.env[key] = val;
+      }
+    }
+  } catch (e) {
+    console.warn('[Env] Could not parse .env file:', e.message);
+  }
+})();
+
 const { resolveMedia } = require('./services/twitterResolver');
 const { convertToSticker, MAX_WHATSAPP_SIZE } = require('./services/converter');
+const {
+  getPublicConfig,
+  optionalAuth,
+  requireAuth,
+  handleGetMe,
+  handlePaystackInitialize,
+  handlePaystackVerify,
+  handlePaystackManageLink,
+  handlePaystackWebhook
+} = require('./services/authAndBilling');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -51,8 +87,13 @@ const upload = multer({
 });
 
 app.use(cors());
+
+// Paystack Webhook MUST be mounted before express.json() to receive raw payload for HMAC-SHA512 verification
+app.post('/api/billing/paystack/webhook', express.raw({ type: 'application/json' }), handlePaystackWebhook);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(optionalAuth);
 
 // Serve signed Release APK before express.static so /download/twitsticker.apk is never shadowed or browser-cached
 app.get(['/download/twitsticker.apk', '/api/app/download'], (req, res) => {
@@ -78,36 +119,115 @@ app.get(['/download/twitsticker.apk', '/api/app/download'], (req, res) => {
 
 app.use(express.static(PUBLIC_DIR));
 
-// In-memory sliding rate limiter to prevent abuse during traffic spikes
+// In-memory sliding rate limiter (tier-aware: Pro users get higher limits)
 const ipRequestCounts = new Map();
-function rateLimit({ windowMs, max, message }) {
+function rateLimit({ windowMs, max, proMax, message }) {
   return (req, res, next) => {
+    const isPro = Boolean(req.user && req.user.isPro);
+    const effectiveMax = isPro && proMax ? proMax : max;
     const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+    const key = req.user ? `uid:${req.user.uid}` : `ip:${ip}`;
     const now = Date.now();
-    let record = ipRequestCounts.get(ip);
+    let record = ipRequestCounts.get(key);
     if (!record || now > record.resetTime) {
       record = { count: 0, resetTime: now + windowMs };
-      ipRequestCounts.set(ip, record);
+      ipRequestCounts.set(key, record);
     }
     record.count++;
-    if (record.count > max) {
+    if (record.count > effectiveMax) {
       const waitSec = Math.max(1, Math.ceil((record.resetTime - now) / 1000));
       res.set('Retry-After', String(waitSec));
-      return res.status(429).json({ error: message || `Too many requests. Please wait ${waitSec} seconds.` });
+      return res.status(429).json({
+        error: message || `Too many requests. Please wait ${waitSec} seconds.`,
+        isPro
+      });
     }
     next();
   };
 }
 
-// Memory leak safeguard: sweep rate limiter records every 5 minutes
+// Daily free sticker quota (Free: 4 stickers/day, Pro: unlimited)
+const FREE_DAILY_STICKER_LIMIT = Math.max(1, parseInt(process.env.FREE_DAILY_LIMIT || '4', 10));
+const dailyStickerUsage = new Map(); // key -> { date: 'YYYY-MM-DD', count: number }
+
+function getUtcDateKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getNextUtcMidnightIso() {
+  const now = new Date();
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+  return next.toISOString();
+}
+
+function getQuotaKeys(req) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  const keys = [`ip:${ip}`];
+  if (req.user && req.user.uid) {
+    keys.push(`uid:${req.user.uid}`);
+  }
+  return keys;
+}
+
+function getDailyQuotaStatus(req) {
+  const isPro = Boolean(req.user && req.user.isPro);
+  const today = getUtcDateKey();
+  if (isPro) {
+    return {
+      isPro: true,
+      limit: null,
+      used: 0,
+      remaining: null,
+      date: today,
+      resetsAt: getNextUtcMidnightIso()
+    };
+  }
+  const keys = getQuotaKeys(req);
+  let used = 0;
+  for (const key of keys) {
+    const rec = dailyStickerUsage.get(key);
+    if (rec && rec.date === today && rec.count > used) {
+      used = rec.count;
+    }
+  }
+  return {
+    isPro: false,
+    limit: FREE_DAILY_STICKER_LIMIT,
+    used,
+    remaining: Math.max(0, FREE_DAILY_STICKER_LIMIT - used),
+    date: today,
+    resetsAt: getNextUtcMidnightIso()
+  };
+}
+
+function incrementDailyUsage(req) {
+  if (req.user && req.user.isPro) return getDailyQuotaStatus(req);
+  const today = getUtcDateKey();
+  const keys = getQuotaKeys(req);
+  for (const key of keys) {
+    const rec = dailyStickerUsage.get(key);
+    if (!rec || rec.date !== today) {
+      dailyStickerUsage.set(key, { date: today, count: 1 });
+    } else {
+      rec.count += 1;
+    }
+  }
+  return getDailyQuotaStatus(req);
+}
+
+// Memory leak safeguard: sweep rate limiter & stale daily quota records every 5 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [ip, record] of ipRequestCounts.entries()) {
     if (now > record.resetTime) ipRequestCounts.delete(ip);
   }
+  const today = getUtcDateKey();
+  for (const [key, rec] of dailyStickerUsage.entries()) {
+    if (rec.date !== today) dailyStickerUsage.delete(key);
+  }
 }, 5 * 60 * 1000);
 
-// Single-worker conversion queue to strictly limit concurrent FFmpeg processes on low-RAM containers
+// Priority single-worker conversion queue (Pro users jump ahead of free jobs)
 class ConversionQueue {
   constructor(maxConcurrent = 1, maxQueueLength = 25) {
     this.maxConcurrent = maxConcurrent;
@@ -116,14 +236,26 @@ class ConversionQueue {
     this.queue = [];
   }
 
-  enqueue(taskFn) {
-    if (this.queue.length >= this.maxQueueLength) {
+  enqueue(taskFn, { priority = 0 } = {}) {
+    const limit = priority > 0 ? this.maxQueueLength + 15 : this.maxQueueLength;
+    if (this.queue.length >= limit) {
       const err = new Error('High server load: conversion queue is full. Please try again in 10-15 seconds.');
       err.status = 429;
       return Promise.reject(err);
     }
     return new Promise((resolve, reject) => {
-      this.queue.push({ taskFn, resolve, reject });
+      const entry = { taskFn, resolve, reject, priority };
+      if (priority > 0) {
+        // Insert after any existing higher/equal priority jobs, ahead of standard free jobs
+        const insertIdx = this.queue.findIndex(item => item.priority < priority);
+        if (insertIdx === -1) {
+          this.queue.push(entry);
+        } else {
+          this.queue.splice(insertIdx, 0, entry);
+        }
+      } else {
+        this.queue.push(entry);
+      }
       this.dequeue();
     });
   }
@@ -142,7 +274,11 @@ class ConversionQueue {
   }
 
   getStatus() {
-    return { running: this.running, queued: this.queue.length };
+    return {
+      running: this.running,
+      queued: this.queue.length,
+      proQueued: this.queue.filter(q => q.priority > 0).length
+    };
   }
 }
 
@@ -154,9 +290,12 @@ const inFlightConversions = new Map();
 
 /**
  * Computes a deterministic cache identifier based on the source media and conversion parameters.
- * If two requests ask for the same video with the same trim/fps/fit, they yield identical IDs.
+ * If two requests ask for the same video with the same trim/fps/fit/effects, they yield identical IDs.
  */
-function computeStickerCacheId({ inputKey, startTime, duration, fps, quality, fitMode, speed, metadata }) {
+function computeStickerCacheId({
+  inputKey, startTime, duration, fps, quality, fitMode, speed,
+  loopMode, borderStyle, overlayText, textPosition, textColor, metadata
+}) {
   const norm = [
     inputKey.trim(),
     Number(startTime || 0).toFixed(2),
@@ -165,6 +304,11 @@ function computeStickerCacheId({ inputKey, startTime, duration, fps, quality, fi
     parseInt(quality || 70, 10),
     fitMode === 'crop' ? 'crop' : 'fit',
     Number(speed || 1.0).toFixed(2),
+    loopMode || 'normal',
+    borderStyle || 'none',
+    (overlayText || '').trim(),
+    textPosition || 'bottom',
+    textColor || 'white',
     (metadata.packName || 'TwitSticker').trim(),
     (metadata.author || 'gifsticker.site').trim(),
     ((metadata.emojis || ['🔥', '✨'])).slice(0, 3).sort().join(',')
@@ -186,8 +330,33 @@ function touchCachedFiles(stickerId) {
   });
 }
 
+// 0. Public Auth & Billing Config (exposes only public Firebase Web SDK config & Paystack plan tiers)
+app.get('/api/config/public', (req, res) => {
+  res.json({
+    ...getPublicConfig(),
+    freeDailyLimit: FREE_DAILY_STICKER_LIMIT
+  });
+});
+
+// Quota: Return remaining daily free sticker generations (or unlimited for Pro)
+app.get('/api/quota', (req, res) => {
+  res.json(getDailyQuotaStatus(req));
+});
+
+// Auth: Return fresh user profile + Pro status from Firebase Admin
+app.get('/api/auth/me', requireAuth, handleGetMe);
+
+// Billing (Paystack): Initialize hosted Checkout / Subscription for 1 Month / 6 Months / 1 Year Pro
+app.post('/api/billing/paystack/initialize', rateLimit({ windowMs: 60 * 1000, max: 15, proMax: 30, message: 'Too many checkout requests. Please wait a minute.' }), requireAuth, handlePaystackInitialize);
+
+// Billing (Paystack): Verify transaction immediately upon redirect back from Paystack
+app.post('/api/billing/paystack/verify', requireAuth, handlePaystackVerify);
+
+// Billing (Paystack): Generate hosted subscription management link
+app.post('/api/billing/paystack/manage-link', requireAuth, handlePaystackManageLink);
+
 // 1. Extract GIF, video, or social post URL
-app.post('/api/extract', rateLimit({ windowMs: 60 * 1000, max: 30, message: 'Too many extraction requests. Please wait a moment.' }), async (req, res) => {
+app.post('/api/extract', rateLimit({ windowMs: 60 * 1000, max: 30, proMax: 120, message: 'Too many extraction requests. Please wait a moment.' }), async (req, res) => {
   try {
     const { url } = req.body;
     if (!url || typeof url !== 'string') {
@@ -299,9 +468,23 @@ app.get('/api/proxy-media', (req, res) => {
 });
 
 // 2. Convert to WhatsApp sticker
-app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too many conversion requests. Please wait a moment.' }), upload.single('mediaFile'), async (req, res) => {
+app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, proMax: 60, message: 'Too many conversion requests. Please wait a moment.' }), upload.single('mediaFile'), async (req, res) => {
   let tempUploadedFile = null;
   try {
+    const isPro = Boolean(req.user && req.user.isPro);
+
+    // Enforce daily free sticker limit (4/day for Free, unlimited for Pro)
+    if (!isPro) {
+      const quota = getDailyQuotaStatus(req);
+      if (quota.remaining <= 0) {
+        return res.status(429).json({
+          error: `You've used all ${FREE_DAILY_STICKER_LIMIT} free stickers for today. Upgrade to TwitSticker Pro for unlimited stickers!`,
+          code: 'DAILY_LIMIT_REACHED',
+          quota
+        });
+      }
+    }
+
     let inputSource = null;
     let inputKey = null;
 
@@ -333,12 +516,45 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
       return res.status(400).json({ error: 'No video source provided (videoUrl or file upload required)' });
     }
 
-    const startTime = parseFloat(req.body.startTime) || 0;
-    const duration = parseFloat(req.body.duration) || 3.5;
-    const fps = parseInt(req.body.fps, 10) || 14;
-    const quality = parseInt(req.body.quality, 10) || 70;
+    const startTime = Math.max(0, parseFloat(req.body.startTime) || 0);
+    const maxAllowedDuration = isPro ? 6.0 : 3.5;
+    const requestedDuration = parseFloat(req.body.duration) || 3.0;
+    const duration = Math.min(Math.max(0.5, requestedDuration), maxAllowedDuration);
+
+    const maxAllowedFps = isPro ? 20 : 14;
+    const requestedFps = parseInt(req.body.fps, 10) || 14;
+    const fps = Math.min(Math.max(8, requestedFps), maxAllowedFps);
+
+    const quality = parseInt(req.body.quality, 10) || (isPro ? 78 : 70);
     const fitMode = req.body.fitMode === 'crop' ? 'crop' : 'fit';
     const speed = parseFloat(req.body.speed) || 1.0;
+
+    // Pro Creative Effects
+    const allowedLoops = ['normal', 'reverse', 'boomerang'];
+    const requestedLoop = allowedLoops.includes(req.body.loopMode) ? req.body.loopMode : 'normal';
+    const allowedBorders = ['none', 'white', 'rounded', 'circle'];
+    const requestedBorder = allowedBorders.includes(req.body.borderStyle) ? req.body.borderStyle : 'none';
+    const requestedOverlayText = String(req.body.overlayText || '').trim().slice(0, 60);
+    const allowedPositions = ['top', 'center', 'bottom'];
+    const textPosition = allowedPositions.includes(req.body.textPosition) ? req.body.textPosition : 'bottom';
+    const allowedColors = ['white', 'yellow', 'green', 'pink'];
+    const textColor = allowedColors.includes(req.body.textColor) ? req.body.textColor : 'white';
+
+    const usesProEffects =
+      requestedLoop !== 'normal' ||
+      requestedBorder !== 'none' ||
+      requestedOverlayText.length > 0;
+
+    if (usesProEffects && !isPro) {
+      return res.status(403).json({
+        error: 'Creative studio effects (text overlays, borders, boomerang/reverse) require TwitSticker Pro.',
+        code: 'PRO_REQUIRED'
+      });
+    }
+
+    const loopMode = isPro ? requestedLoop : 'normal';
+    const borderStyle = isPro ? requestedBorder : 'none';
+    const overlayText = isPro ? requestedOverlayText : '';
 
     let emojis = ['🔥', '✨'];
     if (req.body.emojis) {
@@ -346,9 +562,10 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
       else emojis = req.body.emojis.split(/[\s,]+/).filter(Boolean);
     }
 
+    // Custom EXIF pack name & author are Pro-only; free users get default TwitSticker branding
     const metadata = {
-      packName: req.body.packName || 'TwitSticker',
-      author: req.body.author || 'gifsticker.site',
+      packName: isPro ? ((req.body.packName || '').trim() || 'TwitSticker') : 'TwitSticker',
+      author: isPro ? ((req.body.author || '').trim() || 'gifsticker.site') : 'gifsticker.site',
       emojis: emojis.slice(0, 3)
     };
 
@@ -361,6 +578,11 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
       quality,
       fitMode,
       speed,
+      loopMode,
+      borderStyle,
+      overlayText,
+      textPosition,
+      textColor,
       metadata
     });
 
@@ -380,6 +602,7 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
         const stat = fs.statSync(outputPath);
         if (stat.size > 1000) {
           touchCachedFiles(stickerId);
+          const quota = incrementDailyUsage(req);
           console.log(`[CACHE HIT] Delivering cached sticker ${stickerId} for ${inputKey.slice(0, 50)}...`);
           return res.json({
             success: true,
@@ -394,7 +617,8 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
             isCompliant: stat.size <= 500 * 1024,
             maxLimitKb: 500,
             dimensions: '512x512',
-            metadata
+            metadata,
+            quota
           });
         }
       } catch (cacheErr) {
@@ -407,6 +631,7 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
       console.log(`[IN-FLIGHT JOIN] Joining active conversion for sticker ${stickerId}`);
       const result = await inFlightConversions.get(stickerId);
       touchCachedFiles(stickerId);
+      const quota = incrementDailyUsage(req);
       return res.json({
         success: true,
         cached: true,
@@ -420,13 +645,14 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
         isCompliant: result.isCompliant,
         maxLimitKb: 500,
         dimensions: '512x512',
-        metadata
+        metadata,
+        quota
       });
     }
 
-    // 3. EXECUTE CONVERSION: Enqueue task
+    // 3. EXECUTE CONVERSION: Enqueue task (Pro users get priority lane)
     const qStatus = conversionQueue.getStatus();
-    console.log(`Starting sticker conversion: source=${inputSource.slice(0, 50)}... [${startTime}s - ${startTime + duration}s] (queue: ${qStatus.queued} waiting)`);
+    console.log(`Starting sticker conversion [${isPro ? 'PRO' : 'FREE'}]: source=${inputSource.slice(0, 50)}... [${startTime}s - ${startTime + duration}s] (queue: ${qStatus.queued} waiting)`);
 
     const conversionPromise = conversionQueue.enqueue(() => convertToSticker({
       inputSource,
@@ -437,8 +663,14 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
       quality,
       fitMode,
       speed,
+      loopMode,
+      borderStyle,
+      overlayText,
+      textPosition,
+      textColor,
+      isPro,
       metadata
-    }));
+    }), { priority: isPro ? 1 : 0 });
 
     inFlightConversions.set(stickerId, conversionPromise);
 
@@ -463,6 +695,8 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
       console.warn('Could not write metadata JSON:', metaErr);
     }
 
+    const quota = incrementDailyUsage(req);
+
     res.json({
       success: true,
       cached: false,
@@ -476,7 +710,8 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, message: 'Too
       isCompliant: result.isCompliant,
       maxLimitKb: 500,
       dimensions: '512x512',
-      metadata
+      metadata,
+      quota
     });
   } catch (err) {
     console.error('Conversion error:', err);

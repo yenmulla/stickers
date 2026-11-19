@@ -274,6 +274,44 @@ async function createWastickersArchive(stickerPath, localSourcePath, packPath, s
 }
 
 /**
+ * Finds an available bold sans-serif font file for FFmpeg drawtext filter.
+ */
+function getOverlayFontPath() {
+  const candidates = [
+    process.env.STICKER_FONT_PATH,
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+    '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf',
+    'C:/Windows/Fonts/arialbd.ttf',
+    'C:/Windows/Fonts/segoeuib.ttf',
+    '/System/Library/Fonts/Supplemental/Arial Bold.ttf'
+  ].filter(Boolean);
+
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+/**
+ * Escapes user text safely for FFmpeg drawtext filter.
+ */
+function escapeDrawtext(raw) {
+  return String(raw || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .trim()
+    .slice(0, 60)
+    .replace(/\\/g, '\\\\')
+    .replace(/:/g, '\\:')
+    .replace(/'/g, "\\\\'")
+    .replace(/%/g, '\\%')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+}
+
+/**
  * Converts an input video, animated GIF, animated WebP, or image to a WhatsApp-compatible 512x512 animated WebP.
  * Automatically ensures size < 500 KB and limits memory usage to under 60 MB.
  */
@@ -286,6 +324,12 @@ async function convertToSticker({
   quality = 70,
   fitMode = 'fit', // 'fit' (transparent pad) or 'crop' (center crop)
   speed = 1.0,
+  loopMode = 'normal', // 'normal' | 'reverse' | 'boomerang' (Pro)
+  borderStyle = 'none', // 'none' | 'white' | 'rounded' | 'circle' (Pro)
+  overlayText = '', // Optional meme caption text (Pro)
+  textPosition = 'bottom', // 'top' | 'center' | 'bottom'
+  textColor = 'white', // 'white' | 'yellow' | 'green' | 'pink'
+  isPro = false,
   metadata = {}
 }) {
   const tmpOut = outputPath.replace('.webp', '-tmp.webp');
@@ -340,8 +384,8 @@ async function convertToSticker({
 
     const isGifOrImage = ['gif', 'webp', 'png', 'jpg'].includes(detectedFormat) || /\.(gif|png|jpe?g)$/i.test(localVideoFile);
 
-    // Build filter graph
-    function buildFilter(currentFps, currentFit, currentSpeed) {
+    // Build filter graph (supports Pro loopMode, borderStyle, and overlayText)
+    function buildFilterArgs(currentFps, currentFit, currentSpeed) {
       const filters = [];
 
       // Trimming / speed
@@ -352,23 +396,75 @@ async function convertToSticker({
       // FPS
       filters.push(`fps=${currentFps}`);
 
-      // Scaling and padding
-      if (currentFit === 'crop') {
-        filters.push('scale=512:512:force_original_aspect_ratio=increase');
-        filters.push('crop=512:512');
-      } else {
-        // Fit with transparent padding
-        filters.push('scale=512:512:force_original_aspect_ratio=decrease');
+      // Scaling, padding, and optional sticker border/shape
+      if (borderStyle === 'white') {
+        if (currentFit === 'crop') {
+          filters.push('scale=480:480:force_original_aspect_ratio=increase');
+          filters.push('crop=480:480');
+        } else {
+          filters.push('scale=480:480:force_original_aspect_ratio=decrease');
+        }
+        // White die-cut border frame + subtle transparent margin
+        filters.push('pad=iw+16:ih+16:8:8:color=white');
         filters.push('pad=512:512:(512-iw)/2:(512-ih)/2:color=0x00000000');
+      } else {
+        if (currentFit === 'crop') {
+          filters.push('scale=512:512:force_original_aspect_ratio=increase');
+          filters.push('crop=512:512');
+        } else {
+          // Fit with transparent padding
+          filters.push('scale=512:512:force_original_aspect_ratio=decrease');
+          filters.push('pad=512:512:(512-iw)/2:(512-ih)/2:color=0x00000000');
+        }
+
+        if (borderStyle === 'rounded') {
+          filters.push("format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(gt(abs(W/2-X),W/2-56)*gt(abs(H/2-Y),H/2-56),if(lte(hypot(56-(W/2-abs(W/2-X)),56-(H/2-abs(H/2-Y))),56),alpha(X,Y),0),alpha(X,Y))'");
+        } else if (borderStyle === 'circle') {
+          filters.push("format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lte(hypot(X-W/2,Y-H/2),248),alpha(X,Y),0)'");
+        }
       }
 
-      return filters.join(',');
+      // Optional Pro meme text overlay
+      const cleanText = escapeDrawtext(overlayText);
+      if (cleanText) {
+        const colorMap = {
+          white: '0xFFFFFF',
+          yellow: '0xFDE047',
+          green: '0x25D366',
+          pink: '0xF472B6'
+        };
+        const fontColor = colorMap[textColor] || '0xFFFFFF';
+        const yExpr = textPosition === 'top'
+          ? '28'
+          : (textPosition === 'center' ? '(h-text_h)/2' : 'h-text_h-28');
+        const fontPath = getOverlayFontPath();
+        const fontArg = fontPath
+          ? `fontfile='${fontPath.replace(/\\/g, '/').replace(/:/g, '\\:')}':`
+          : '';
+        const fontSize = cleanText.length > 22 ? 32 : 42;
+        filters.push(`drawtext=${fontArg}text='${cleanText}':fontcolor=${fontColor}:fontsize=${fontSize}:borderw=4:bordercolor=black:x=(w-text_w)/2:y=${yExpr}`);
+      }
+
+      // Optional Pro reverse / boomerang loop
+      if (loopMode === 'reverse') {
+        filters.push('reverse');
+        return ['-vf', filters.join(',')];
+      }
+
+      if (loopMode === 'boomerang') {
+        const baseChain = filters.join(',');
+        const complex = `[0:v]${baseChain},split=2[fwd][rev];[rev]reverse[rev2];[fwd][rev2]concat=n=2:v=1:a=0[vout]`;
+        return ['-filter_complex', complex, '-map', '[vout]'];
+      }
+
+      return ['-vf', filters.join(',')];
     }
 
     // Attempt conversion passes to ensure <= 500 KB
+    const maxFpsCap = isPro ? 20 : 14;
     const attempts = [
-      { fps: Math.min(fps, 16), q: quality },
-      { fps: Math.min(fps, 13), q: Math.max(quality - 15, 50) },
+      { fps: Math.min(fps, maxFpsCap), q: quality },
+      { fps: Math.min(fps, isPro ? 15 : 13), q: Math.max(quality - 15, 50) },
       { fps: Math.min(fps, 10), q: Math.max(quality - 25, 40) },
       { fps: 9, q: 35 }
     ];
@@ -378,7 +474,7 @@ async function convertToSticker({
 
     for (let i = 0; i < attempts.length; i++) {
       const currentAttempt = attempts[i];
-      const vf = buildFilter(currentAttempt.fps, fitMode, speed);
+      const filterArgs = buildFilterArgs(currentAttempt.fps, fitMode, speed);
 
       // Only pass -ss if startTime > 0 and source is not a static/GIF stream with 0 offset
       const preInputSeekArgs = (!isGifOrImage && startTime > 0) ? ['-ss', String(startTime)] : [];
@@ -391,7 +487,7 @@ async function convertToSticker({
         '-t', String(duration),
         '-i', localVideoFile,
         ...postInputSeekArgs,
-        '-vf', vf,
+        ...filterArgs,
         '-vcodec', 'libwebp',
         '-pix_fmt', 'yuva420p',
         '-lossless', '0',

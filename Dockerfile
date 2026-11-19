@@ -7,11 +7,13 @@ ENV PORT=3000
 ENV FFMPEG_PATH=/usr/bin/ffmpeg
 ENV PYTHON_BIN=python3
 
-# Install system dependencies: Python3, pip, ffmpeg, curl
+# Install system dependencies: Python3, pip, ffmpeg, curl, fonts (for Pro text overlays)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     ffmpeg \
+    fontconfig \
+    fonts-dejavu-core \
     curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*

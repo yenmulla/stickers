@@ -185,6 +185,55 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
+  <!-- Firebase Web SDK (Compat) for Account Sign-In & Pro Sync -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <style>
+    .twit-pro-active .ad-slot-wrapper { display: none !important; }
+
+    @keyframes proCardEnter {
+      0% { opacity: 0; transform: scale(0.88) translateY(24px); }
+      65% { opacity: 1; transform: scale(1.02) translateY(-2px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes proBadgePop {
+      0% { opacity: 0; transform: scale(0.4) rotate(-18deg); }
+      70% { opacity: 1; transform: scale(1.12) rotate(4deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+    @keyframes proRingPulse {
+      0%, 100% { transform: scale(1); opacity: 0.45; }
+      50% { transform: scale(1.18); opacity: 0.15; }
+    }
+    @keyframes proPerkSlide {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes proGoldShimmer {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .pro-welcome-card { animation: proCardEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+    .pro-welcome-emblem { animation: proBadgePop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both; }
+    .pro-welcome-ring { animation: proRingPulse 2.4s ease-in-out infinite; }
+    .pro-welcome-perk { opacity: 0; animation: proPerkSlide 0.45s ease-out forwards; }
+    .pro-gold-text {
+      background: linear-gradient(90deg, #fde68a, #fbbf24, #34d399, #fde68a);
+      background-size: 220% 220%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: proGoldShimmer 4s ease infinite;
+    }
+  </style>
+  <script>
+    try {
+      if (localStorage.getItem('twitsticker_is_pro_v1') === '1') {
+        document.documentElement.classList.add('twit-pro-active');
+      }
+    } catch (e) {}
+  </script>
 </head>
 <body class="bg-[#0b0e14] text-slate-100 min-h-screen w-full max-w-full overflow-x-hidden flex flex-col font-['Inter'] antialiased selection:bg-[#25D366] selection:text-black">
 
@@ -256,6 +305,27 @@
           <span class="hidden sm:inline">My Stickers</span>
           <span id="historyCountBadge" class="hidden px-1.5 py-0.2 rounded-full bg-[#25D366] text-black font-bold text-[10px]">0</span>
         </button>
+
+        <!-- Upgrade to Pro Button -->
+        <button id="navUpgradeBtn" class="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-bold transition shadow-md shadow-amber-500/20 cursor-pointer">
+          <i data-lucide="crown" class="w-3.5 h-3.5"></i>
+          <span>Pro</span>
+        </button>
+
+        <!-- Sign In Button (Logged Out) -->
+        <button id="navSignInBtn" class="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition border border-slate-700 text-slate-200 cursor-pointer">
+          <i data-lucide="user" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Sign In</span>
+        </button>
+
+        <!-- User Account Pill (Logged In) -->
+        <div id="navUserMenu" class="hidden flex items-center space-x-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700 text-slate-200">
+          <span id="navProBadge" class="hidden px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-extrabold text-[9px] uppercase tracking-wider">PRO</span>
+          <span id="navUserEmail" class="max-w-[90px] sm:max-w-[130px] truncate text-[11px] font-medium text-slate-200">Account</span>
+          <button id="navSignOutBtn" class="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition" title="Sign out">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
       </div>
     </div>
   </header>
@@ -498,7 +568,70 @@
             <div class="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
               <button type="button" data-fps="10" class="fps-btn flex-1 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white transition">10 fps</button>
               <button type="button" data-fps="14" class="fps-btn active flex-1 py-1.5 text-xs rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-semibold transition">14 fps</button>
-              <button type="button" data-fps="16" class="fps-btn flex-1 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white transition">16 fps</button>
+              <button type="button" data-fps="16" data-pro-feature="true" class="fps-btn flex-1 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1">
+                <span>16</span>
+                <span class="pro-lock-pill px-1 py-0.2 text-[8px] font-extrabold rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">PRO</span>
+              </button>
+              <button type="button" data-fps="20" data-pro-feature="true" class="fps-btn flex-1 py-1.5 text-xs rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1">
+                <span>20</span>
+                <span class="pro-lock-pill px-1 py-0.2 text-[8px] font-extrabold rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">PRO</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pro Creative Studio Effects (Loop Mode, Borders, Meme Caption) -->
+        <div class="border border-amber-500/25 bg-gradient-to-br from-amber-500/[0.04] to-slate-950/60 rounded-xl p-4 space-y-4">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+              <i data-lucide="wand-2" class="w-3.5 h-3.5 text-amber-400"></i>
+              <span>Creative Effects</span>
+              <span class="pro-lock-pill px-1.5 py-0.5 text-[9px] font-extrabold rounded bg-amber-400 text-slate-950 uppercase">PRO</span>
+            </label>
+            <span class="text-[10px] text-slate-400">Boomerang, borders &amp; meme captions</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- Loop Mode -->
+            <div>
+              <span class="text-[11px] text-slate-400 block mb-1.5">Loop Effect</span>
+              <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                <button type="button" data-loop="normal" class="loop-btn active flex-1 py-1.5 text-[11px] rounded-md bg-slate-800 text-white font-semibold transition">Normal</button>
+                <button type="button" data-loop="reverse" data-pro-feature="true" class="loop-btn flex-1 py-1.5 text-[11px] rounded-md text-slate-400 hover:text-white transition">Reverse</button>
+                <button type="button" data-loop="boomerang" data-pro-feature="true" class="loop-btn flex-1 py-1.5 text-[11px] rounded-md text-slate-400 hover:text-white transition">Boomerang</button>
+              </div>
+            </div>
+
+            <!-- Border / Shape -->
+            <div>
+              <span class="text-[11px] text-slate-400 block mb-1.5">Sticker Border / Shape</span>
+              <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                <button type="button" data-border="none" class="border-btn active flex-1 py-1.5 text-[11px] rounded-md bg-slate-800 text-white font-semibold transition">None</button>
+                <button type="button" data-border="white" data-pro-feature="true" class="border-btn flex-1 py-1.5 text-[11px] rounded-md text-slate-400 hover:text-white transition">Outline</button>
+                <button type="button" data-border="rounded" data-pro-feature="true" class="border-btn flex-1 py-1.5 text-[11px] rounded-md text-slate-400 hover:text-white transition">Rounded</button>
+                <button type="button" data-border="circle" data-pro-feature="true" class="border-btn flex-1 py-1.5 text-[11px] rounded-md text-slate-400 hover:text-white transition">Circle</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Meme Caption Overlay -->
+          <div class="space-y-2">
+            <span class="text-[11px] text-slate-400 block">Text / Meme Caption Overlay</span>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="text" id="proOverlayText" maxlength="60" placeholder="Upgrade to Pro to add meme captions..." class="flex-1 px-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400">
+              <div class="flex items-center gap-1.5">
+                <select id="proTextPosition" class="px-2.5 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-amber-400">
+                  <option value="bottom">Bottom</option>
+                  <option value="top">Top</option>
+                  <option value="center">Center</option>
+                </select>
+                <select id="proTextColor" class="px-2.5 py-2 text-xs rounded-lg bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-amber-400">
+                  <option value="white">White</option>
+                  <option value="yellow">Yellow</option>
+                  <option value="green">Green</option>
+                  <option value="pink">Pink</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -509,11 +642,15 @@
             <span class="flex items-center gap-2">
               <i data-lucide="tag" class="w-3.5 h-3.5 text-[#25D366]"></i>
               <span>Sticker Pack Metadata (WhatsApp EXIF)</span>
+              <span class="pro-lock-pill px-1.5 py-0.5 text-[9px] font-extrabold rounded bg-amber-400/20 text-amber-300 border border-amber-400/30 uppercase">Custom = PRO</span>
             </span>
             <i data-lucide="chevron-down" id="metaChevron" class="w-4 h-4 transition-transform"></i>
           </button>
           
           <div id="metaFields" class="hidden p-4 bg-slate-950/40 border-t border-slate-800 space-y-3">
+            <p id="metaProLockNote" class="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+              Free stickers use default <strong>TwitSticker / gifsticker.site</strong> metadata. Upgrade to Pro to customize pack name &amp; author branding.
+            </p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="text-[11px] text-slate-400 block mb-1">Sticker Pack Name</label>
@@ -529,6 +666,17 @@
               <input type="text" id="metaEmojis" value="😂, 🔥, 🚀" class="w-full px-3 py-2 text-xs rounded-lg bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-[#25D366]">
             </div>
           </div>
+        </div>
+
+        <!-- Daily Free Quota Indicator -->
+        <div id="dailyQuotaBar" class="px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2 text-slate-300">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span id="dailyQuotaText">Free Plan: <strong>4 / 4</strong> stickers left today</span>
+          </div>
+          <button type="button" id="quotaUpgradeBtn" class="text-[11px] font-bold text-amber-400 hover:text-amber-300 transition whitespace-nowrap cursor-pointer">
+            Go Unlimited &rarr;
+          </button>
         </div>
 
         <!-- Big Glowing Convert Button -->
@@ -1396,7 +1544,201 @@
     </div>
   </footer>
 
-  <script src="/app.js?v=2"></script>
+  <!-- Auth Modal (Firebase Email & Google Sign-In) -->
+  <div id="authModal" class="hidden fixed inset-0 z-[90] flex items-center justify-center p-4">
+    <div id="authModalBackdrop" class="fixed inset-0 bg-black/75 backdrop-blur-sm"></div>
+    <div class="relative z-10 w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-['Outfit'] font-bold text-lg text-white">Sign in to TwitSticker</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Sync your Pro subscription &amp; perks across devices</p>
+        </div>
+        <button id="closeAuthModalBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <button type="button" id="authGoogleBtn" class="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs flex items-center justify-center gap-2 transition cursor-pointer">
+        <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        <span>Continue with Google</span>
+      </button>
+
+      <div class="flex items-center gap-3 text-[11px] text-slate-500">
+        <div class="flex-1 h-px bg-slate-800"></div>
+        <span>or email</span>
+        <div class="flex-1 h-px bg-slate-800"></div>
+      </div>
+
+      <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+        <button type="button" id="authTabSignIn" class="flex-1 py-2 text-xs font-bold rounded-lg bg-slate-800 text-white">Sign In</button>
+        <button type="button" id="authTabSignUp" class="flex-1 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-white">Create Account</button>
+      </div>
+
+      <form id="authEmailForm" class="space-y-3">
+        <input type="email" id="authEmailInput" required placeholder="you@example.com" class="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-[#25D366]">
+        <input type="password" id="authPasswordInput" required minlength="6" placeholder="Password (min 6 characters)" class="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-[#25D366]">
+        <p id="authModalError" class="hidden text-xs text-red-400 bg-red-950/50 border border-red-500/30 rounded-lg px-3 py-2"></p>
+        <button type="submit" id="authEmailSubmitBtn" class="w-full py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-slate-950 font-bold text-xs transition cursor-pointer">
+          Sign In with Email
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Upgrade to Pro Modal (Paystack Checkout & Subscriptions) -->
+  <div id="proUpgradeModal" class="hidden fixed inset-0 z-[90] flex items-center justify-center p-4">
+    <div id="proModalBackdrop" class="fixed inset-0 bg-black/80 backdrop-blur-sm"></div>
+    <div class="relative z-10 w-full max-w-lg bg-slate-900 border border-amber-500/40 rounded-2xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-extrabold uppercase tracking-wider mb-1.5">
+            <i data-lucide="crown" class="w-3 h-3"></i>
+            <span>TwitSticker Pro</span>
+          </span>
+          <h3 class="font-['Outfit'] font-extrabold text-xl text-white">Unlock Full Sticker Studio Power</h3>
+        </div>
+        <button id="closeProModalBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <p id="proUpgradeReason" class="hidden text-xs text-amber-200 bg-amber-500/15 border border-amber-500/30 rounded-xl px-3.5 py-2.5"></p>
+
+      <div id="proActiveBanner" class="hidden p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-xs space-y-3">
+        <div class="flex items-center gap-2 font-semibold">
+          <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400 flex-shrink-0"></i>
+          <span>You are a TwitSticker Pro member! All Pro features and ad-free mode are active.</span>
+        </div>
+        <button type="button" id="paystackManageBtn" class="w-full py-2 px-3 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 font-semibold text-xs transition cursor-pointer">
+          Manage Subscription on Paystack
+        </button>
+      </div>
+
+      <ul class="space-y-2.5 text-xs text-slate-200 bg-slate-950/70 p-4 rounded-xl border border-slate-800">
+        <li class="flex items-center gap-2.5"><i data-lucide="infinity" class="w-4 h-4 text-amber-400 flex-shrink-0"></i><span><strong>Unlimited Stickers Every Day</strong> (Free accounts are limited to 4 stickers/day)</span></li>
+        <li class="flex items-center gap-2.5"><i data-lucide="zap" class="w-4 h-4 text-amber-400 flex-shrink-0"></i><span><strong>Priority Conversion Queue</strong> + 4× higher rate limits + clips up to <strong>6s &amp; 20 FPS</strong></span></li>
+        <li class="flex items-center gap-2.5"><i data-lucide="wand-2" class="w-4 h-4 text-amber-400 flex-shrink-0"></i><span><strong>Creative Studio Effects:</strong> Meme text overlays, white outlines, rounded/circle shapes, reverse &amp; boomerang loops</span></li>
+        <li class="flex items-center gap-2.5"><i data-lucide="tag" class="w-4 h-4 text-amber-400 flex-shrink-0"></i><span><strong>Custom WhatsApp EXIF Metadata:</strong> Set your own Pack Name &amp; Author (remove default branding)</span></li>
+        <li class="flex items-center gap-2.5"><i data-lucide="shield-check" class="w-4 h-4 text-amber-400 flex-shrink-0"></i><span><strong>100% Ad-Free Experience</strong> across the entire web studio</span></li>
+      </ul>
+
+      <!-- 3-Tier Plan Selector (1 Month / 6 Months / 1 Year) -->
+      <div class="grid grid-cols-3 gap-2.5" id="proPlanSelector">
+        <button type="button" data-plan-id="monthly" class="pro-plan-card relative p-3 rounded-xl border border-slate-800 bg-slate-950/80 hover:border-slate-600 text-left transition cursor-pointer flex flex-col justify-between">
+          <span class="text-[11px] font-semibold text-slate-300">1 Month</span>
+          <div class="mt-1.5">
+            <span class="font-['Outfit'] font-extrabold text-xl text-white">$1.49</span>
+            <span class="block text-[10px] text-slate-400 mt-0.5">$1.49 / mo</span>
+          </div>
+        </button>
+
+        <button type="button" data-plan-id="6months" class="pro-plan-card relative p-3 rounded-xl border border-slate-800 bg-slate-950/80 hover:border-slate-600 text-left transition cursor-pointer flex flex-col justify-between">
+          <span class="absolute -top-2 right-2 px-1.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-extrabold text-[9px] uppercase tracking-wide">Save 33%</span>
+          <span class="text-[11px] font-semibold text-slate-300">6 Months</span>
+          <div class="mt-1.5">
+            <span class="font-['Outfit'] font-extrabold text-xl text-white">$6</span>
+            <span class="block text-[10px] text-slate-400 mt-0.5">$1.00 / mo</span>
+          </div>
+        </button>
+
+        <button type="button" data-plan-id="yearly" class="pro-plan-card active relative p-3 rounded-xl border-2 border-amber-400 bg-amber-400/10 text-left transition cursor-pointer flex flex-col justify-between shadow-lg shadow-amber-500/10">
+          <span class="absolute -top-2 right-2 px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-extrabold text-[9px] uppercase tracking-wide">Best Value</span>
+          <span class="text-[11px] font-bold text-amber-300">1 Year</span>
+          <div class="mt-1.5">
+            <span class="font-['Outfit'] font-extrabold text-xl text-white">$10</span>
+            <span class="block text-[10px] text-amber-200/80 mt-0.5">$0.83 / mo · -44%</span>
+          </div>
+        </button>
+      </div>
+
+      <div id="proSignInPrompt" class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+        <span class="text-xs text-slate-300">Sign in first so Pro links to your account automatically.</span>
+        <button type="button" id="proSignInFirstBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold whitespace-nowrap cursor-pointer">
+          Sign In
+        </button>
+      </div>
+
+      <p id="paystackCheckoutError" class="hidden text-xs text-red-400 bg-red-950/50 border border-red-500/30 rounded-xl px-3.5 py-2.5"></p>
+
+      <div id="proCheckoutActions" class="flex flex-col sm:flex-row gap-2.5">
+        <button type="button" id="paystackCheckoutBtn" class="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-['Outfit'] font-extrabold text-sm text-center shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition cursor-pointer">
+          <i data-lucide="credit-card" class="w-4 h-4"></i>
+          <span id="paystackCheckoutBtnLabel">Get 1 Year Pro — $10</span>
+        </button>
+        <button type="button" id="refreshProStatusBtn" class="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition cursor-pointer">
+          Refresh Status
+        </button>
+      </div>
+
+      <p class="text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">
+        <i data-lucide="lock" class="w-3 h-3 text-slate-400"></i>
+        <span>Secure checkout powered by <strong>Paystack</strong> · Cards, Mobile Money &amp; Bank</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Welcome to TwitSticker Pro Celebration Overlay -->
+  <div id="proWelcomeOverlay" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-4 overflow-hidden">
+    <div id="proWelcomeBackdrop" class="fixed inset-0 bg-[#070a10]/85 backdrop-blur-md transition-opacity"></div>
+    <canvas id="proWelcomeCanvas" class="fixed inset-0 pointer-events-none z-[121]"></canvas>
+
+    <div class="pro-welcome-card relative z-[122] w-full max-w-md rounded-3xl bg-gradient-to-b from-slate-900 via-[#0e1420] to-slate-950 border border-amber-400/40 p-7 sm:p-8 text-center shadow-[0_0_80px_rgba(251,191,36,0.2)] overflow-hidden">
+      <!-- Subtle top ambient glow -->
+      <div class="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-48 bg-amber-400/20 rounded-full blur-[70px]"></div>
+
+      <!-- Animated Crown Emblem -->
+      <div class="relative mx-auto w-24 h-24 flex items-center justify-center mb-5">
+        <div class="pro-welcome-ring absolute inset-0 rounded-full bg-gradient-to-tr from-amber-400/40 via-yellow-300/20 to-emerald-400/40 blur-md"></div>
+        <div class="pro-welcome-emblem relative w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 shadow-2xl shadow-amber-500/40 flex items-center justify-center border border-amber-200/70">
+          <i data-lucide="crown" class="w-10 h-10 text-slate-950 stroke-[2.2]"></i>
+          <span class="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-[#25D366] border-2 border-slate-950 flex items-center justify-center shadow-lg">
+            <i data-lucide="check" class="w-4 h-4 text-slate-950 stroke-[3]"></i>
+          </span>
+        </div>
+      </div>
+
+      <!-- Plan Active Pill -->
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/35 text-amber-300 text-[11px] font-bold uppercase tracking-wider mb-3">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="proWelcomePlanLabel">TwitSticker Pro · Active</span>
+      </div>
+
+      <h2 class="font-['Outfit'] font-extrabold text-2xl sm:text-3xl tracking-tight pro-gold-text mb-2">
+        Welcome to Pro!
+      </h2>
+      <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6">
+        Your upgrade is live. All limits have been removed and your studio is fully unlocked.
+      </p>
+
+      <!-- Staggered Unlocked Perks -->
+      <div class="grid grid-cols-1 gap-2 text-left mb-6">
+        <div class="pro-welcome-perk flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 text-xs text-slate-200" style="animation-delay: 0.25s;">
+          <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>
+          <span><strong>Unlimited Stickers</strong> every day &amp; priority queue</span>
+        </div>
+        <div class="pro-welcome-perk flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 text-xs text-slate-200" style="animation-delay: 0.38s;">
+          <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>
+          <span><strong>Creative Effects:</strong> Captions, borders &amp; boomerang loops</span>
+        </div>
+        <div class="pro-welcome-perk flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 text-xs text-slate-200" style="animation-delay: 0.51s;">
+          <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>
+          <span><strong>Custom EXIF Branding</strong> &amp; up to 6s / 20 FPS clips</span>
+        </div>
+        <div class="pro-welcome-perk flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 text-xs text-slate-200" style="animation-delay: 0.64s;">
+          <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>
+          <span><strong>100% Ad-Free</strong> studio activated immediately</span>
+        </div>
+      </div>
+
+      <button type="button" id="proWelcomeContinueBtn" class="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-400 to-emerald-400 hover:brightness-110 text-slate-950 font-['Outfit'] font-extrabold text-sm shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer">
+        <span>Start Creating Unlimited Stickers</span>
+        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </div>
+
+  <script src="/pro.js?v=5"></script>
+  <script src="/app.js?v=3"></script>
 </body>
 </html>
 

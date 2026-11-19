@@ -21,3 +21,9 @@ local.properties
 *.keystore
 twitsticker-release.apk
 alpha-testers.json
+
+# Secrets & local environment files
+.env
+.env.local
+firebase-service-account*.json
+*firebase-adminsdk*.json

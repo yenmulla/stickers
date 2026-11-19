@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fps: 14,
     speed: 1.0,
     fitMode: 'fit', // 'fit' | 'crop'
+    loopMode: 'normal', // 'normal' | 'reverse' | 'boomerang'
+    borderStyle: 'none', // 'none' | 'white' | 'rounded' | 'circle'
     lastResult: null,
     currentStickerBlob: null
   };
@@ -471,9 +473,10 @@ document.addEventListener('DOMContentLoaded', () => {
     trackEvent('extract_tweet', { status: 'start' });
 
     try {
+      const authHeaders = window.TwitPro ? await window.TwitPro.getAuthHeaders() : {};
       const res = await fetch('/api/extract', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ url })
       });
 
@@ -741,8 +744,9 @@ document.addEventListener('DOMContentLoaded', () => {
         trimStartSlider.value = 0;
         state.startTime = 0;
 
+        const tierMaxDur = (window.TwitPro && window.TwitPro.isPro()) ? 6.0 : 3.5;
         const safeDur = Math.min(3.5, dur);
-        trimDurationSlider.max = Math.min(5.0, dur).toFixed(1);
+        trimDurationSlider.max = Math.min(tierMaxDur, dur).toFixed(1);
         trimDurationSlider.value = safeDur.toFixed(1);
         state.trimDuration = safeDur;
 
@@ -842,9 +846,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // FPS selection
+  // FPS selection (16/20 fps gated for Pro)
   document.querySelectorAll('.fps-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      const targetFps = parseInt(btn.dataset.fps, 10);
+      if (btn.dataset.proFeature === 'true' && !(window.TwitPro && window.TwitPro.isPro())) {
+        if (window.TwitPro) {
+          window.TwitPro.openUpgradeModal(`${targetFps} FPS smooth playback & clips up to 6s require TwitSticker Pro.`);
+        }
+        return;
+      }
       document.querySelectorAll('.fps-btn').forEach(b => {
         b.classList.remove('bg-emerald-500/20', 'border', 'border-emerald-500/30', 'text-emerald-300', 'font-semibold');
         b.classList.add('text-slate-400');
@@ -852,9 +863,57 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.classList.add('bg-emerald-500/20', 'border', 'border-emerald-500/30', 'text-emerald-300', 'font-semibold');
       btn.classList.remove('text-slate-400');
 
-      state.fps = parseInt(btn.dataset.fps, 10);
+      state.fps = targetFps;
     });
   });
+
+  // Pro Loop Mode selection (Normal / Reverse / Boomerang)
+  document.querySelectorAll('.loop-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.proFeature === 'true' && !(window.TwitPro && window.TwitPro.isPro())) {
+        if (window.TwitPro) {
+          window.TwitPro.openUpgradeModal('Reverse & Boomerang loops are TwitSticker Pro creative effects.');
+        }
+        return;
+      }
+      document.querySelectorAll('.loop-btn').forEach(b => {
+        b.classList.remove('bg-slate-800', 'text-white', 'font-semibold');
+        b.classList.add('text-slate-400');
+      });
+      btn.classList.add('bg-slate-800', 'text-white', 'font-semibold');
+      btn.classList.remove('text-slate-400');
+      state.loopMode = btn.dataset.loop || 'normal';
+    });
+  });
+
+  // Pro Sticker Border / Shape selection
+  document.querySelectorAll('.border-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.proFeature === 'true' && !(window.TwitPro && window.TwitPro.isPro())) {
+        if (window.TwitPro) {
+          window.TwitPro.openUpgradeModal('Sticker borders & shapes (Outline, Rounded, Circle) require TwitSticker Pro.');
+        }
+        return;
+      }
+      document.querySelectorAll('.border-btn').forEach(b => {
+        b.classList.remove('bg-slate-800', 'text-white', 'font-semibold');
+        b.classList.add('text-slate-400');
+      });
+      btn.classList.add('bg-slate-800', 'text-white', 'font-semibold');
+      btn.classList.remove('text-slate-400');
+      state.borderStyle = btn.dataset.border || 'none';
+    });
+  });
+
+  // Clicking disabled Pro caption overlay opens upgrade modal
+  const proOverlayTextInput = document.getElementById('proOverlayText');
+  if (proOverlayTextInput && proOverlayTextInput.parentElement) {
+    proOverlayTextInput.parentElement.addEventListener('click', (e) => {
+      if (e.target === proOverlayTextInput && proOverlayTextInput.disabled && window.TwitPro) {
+        window.TwitPro.openUpgradeModal('Meme text overlays require TwitSticker Pro.');
+      }
+    });
+  }
 
   // Background Theme Switcher for Generated Sticker Preview in Result Section
   if (bgCheckerBtn) {
@@ -951,8 +1010,20 @@ document.addEventListener('DOMContentLoaded', () => {
       formData.append('fps', state.fps || 14);
       formData.append('fitMode', state.fitMode || 'fit');
       formData.append('speed', state.speed || 1.0);
-      formData.append('packName', (metaPackName && metaPackName.value.trim()) || 'Twitter Sticker');
-      formData.append('author', (metaAuthor && metaAuthor.value.trim()) || 'Twitter Sticker Maker');
+      formData.append('loopMode', state.loopMode || 'normal');
+      formData.append('borderStyle', state.borderStyle || 'none');
+
+      const overlayTextEl = document.getElementById('proOverlayText');
+      const textPosEl = document.getElementById('proTextPosition');
+      const textColorEl = document.getElementById('proTextColor');
+      if (overlayTextEl && overlayTextEl.value.trim()) {
+        formData.append('overlayText', overlayTextEl.value.trim());
+        formData.append('textPosition', textPosEl ? textPosEl.value : 'bottom');
+        formData.append('textColor', textColorEl ? textColorEl.value : 'white');
+      }
+
+      formData.append('packName', (metaPackName && metaPackName.value.trim()) || 'TwitSticker');
+      formData.append('author', (metaAuthor && metaAuthor.value.trim()) || 'gifsticker.site');
       formData.append('emojis', (metaEmojis && metaEmojis.value.trim()) || '😂, 🔥');
 
       if (state.currentSourceType === 'file' && state.localFile) {
@@ -970,14 +1041,30 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       try {
+        const authHeaders = window.TwitPro ? await window.TwitPro.getAuthHeaders() : {};
         const res = await fetch('/api/convert', {
           method: 'POST',
+          headers: authHeaders,
           body: formData
         });
 
         const data = await res.json();
         if (!res.ok) {
+          if (data.quota && window.TwitPro) {
+            window.TwitPro.updateQuota(data.quota);
+          }
+          if (
+            ((res.status === 403 && data.code === 'PRO_REQUIRED') ||
+             (res.status === 429 && data.code === 'DAILY_LIMIT_REACHED')) &&
+            window.TwitPro
+          ) {
+            window.TwitPro.openUpgradeModal(data.error);
+          }
           throw new Error(data.error || 'Failed to convert media to WhatsApp sticker');
+        }
+
+        if (data.quota && window.TwitPro) {
+          window.TwitPro.updateQuota(data.quota);
         }
 
         trackEvent('convert_sticker', {
