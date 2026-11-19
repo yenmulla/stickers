@@ -486,6 +486,7 @@
     document.getElementById('navSignOutBtn')?.addEventListener('click', async () => {
       if (proState.firebaseInitialized && window.firebase && window.firebase.auth) {
         await window.firebase.auth().signOut();
+        try { window.TwitStickerNative?.signOutGoogle?.(); } catch (e) {}
         showToast('Signed out.');
       }
     });
@@ -515,6 +516,7 @@
       closeMobileDrawer();
       if (proState.firebaseInitialized && window.firebase && window.firebase.auth) {
         await window.firebase.auth().signOut();
+        try { window.TwitStickerNative?.signOutGoogle?.(); } catch (e) {}
         showToast('Signed out.');
       }
     });
@@ -574,8 +576,18 @@
       if (!proState.firebaseInitialized) {
         return setAuthError('Firebase Auth is not configured yet. Add FIREBASE_WEB_* env vars on the server.');
       }
+      // Inside the native Android app: launch native 1-tap Google Account Picker (no password typing!)
+      if (window.TwitStickerNative && typeof window.TwitStickerNative.signInWithGoogle === 'function') {
+        try {
+          window.TwitStickerNative.signInWithGoogle();
+          return;
+        } catch (nativeErr) {
+          console.warn('[TwitPro] Native Google Sign-In bridge failed, falling back:', nativeErr);
+        }
+      }
       try {
         const provider = new window.firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
         await window.firebase.auth().signInWithPopup(provider);
         closeModal('authModal');
         showToast('Signed in with Google!');
@@ -760,6 +772,34 @@
     renderQuotaBar();
   }
 
+  async function onNativeGoogleIdToken(idToken) {
+    const authErrBox = document.getElementById('authModalError');
+    if (authErrBox) authErrBox.classList.add('hidden');
+    if (!idToken || !proState.firebaseInitialized || !window.firebase) return;
+    try {
+      const credential = window.firebase.auth.GoogleAuthProvider.credential(idToken);
+      await window.firebase.auth().signInWithCredential(credential);
+      closeModal('authModal');
+      showToast('Signed in with Google!');
+    } catch (err) {
+      if (authErrBox) {
+        authErrBox.textContent = err.message || 'Could not complete Google Sign-In.';
+        authErrBox.classList.remove('hidden');
+      }
+    }
+  }
+
+  function onNativeGoogleSignInError(message) {
+    const authErrBox = document.getElementById('authModalError');
+    if (!message) return; // User dismissed account picker
+    if (authErrBox) {
+      authErrBox.textContent = message;
+      authErrBox.classList.remove('hidden');
+    } else {
+      showToast(message, true);
+    }
+  }
+
   window.TwitPro = {
     isPro: () => Boolean(proState.isPro),
     getUser: () => proState.user,
@@ -768,6 +808,8 @@
     openAuthModal,
     openUpgradeModal,
     showWelcomeAnimation,
+    onNativeGoogleIdToken,
+    onNativeGoogleSignInError,
     updateQuota,
     fetchQuota,
     onChange: (cb) => {

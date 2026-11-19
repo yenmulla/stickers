@@ -42,8 +42,16 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
+
+import org.json.JSONObject;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -54,6 +62,9 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int FILE_CHOOSER_REQUEST_CODE = 101;
     private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 102;
+    private static final int GOOGLE_SIGN_IN_REQUEST_CODE = 103;
+
+    private GoogleSignInClient googleSignInClient;
 
     private WebView webView;
     private SwipeRefreshLayout swipeRefresh;
@@ -327,6 +338,58 @@ public class MainActivity extends AppCompatActivity {
         return SERVER_URL;
     }
 
+    private GoogleSignInClient getOrCreateGoogleSignInClient() {
+        if (googleSignInClient != null) return googleSignInClient;
+
+        int webClientIdRes = getResources().getIdentifier("default_web_client_id", "string", getPackageName());
+        if (webClientIdRes == 0) {
+            return null;
+        }
+        String webClientId = getString(webClientIdRes);
+        if (TextUtils.isEmpty(webClientId)) {
+            return null;
+        }
+
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(webClientId)
+                .requestEmail()
+                .build();
+        googleSignInClient = GoogleSignIn.getClient(this, gso);
+        return googleSignInClient;
+    }
+
+    public void launchNativeGoogleSignIn() {
+        GoogleSignInClient client = getOrCreateGoogleSignInClient();
+        if (client == null) {
+            notifyWebGoogleSignInError("Google Sign-In is not configured in google-services.json yet (missing default_web_client_id).");
+            return;
+        }
+        // Clear previous cached selection so Android always presents the clean 1-tap account picker
+        client.signOut().addOnCompleteListener(this, task -> {
+            Intent signInIntent = client.getSignInIntent();
+            startActivityForResult(signInIntent, GOOGLE_SIGN_IN_REQUEST_CODE);
+        });
+    }
+
+    public void signOutNativeGoogle() {
+        GoogleSignInClient client = getOrCreateGoogleSignInClient();
+        if (client != null) {
+            client.signOut();
+        }
+    }
+
+    private void notifyWebGoogleIdToken(String idToken) {
+        if (webView == null) return;
+        String js = "if (window.TwitPro && window.TwitPro.onNativeGoogleIdToken) { window.TwitPro.onNativeGoogleIdToken(" + JSONObject.quote(idToken) + "); }";
+        webView.evaluateJavascript(js, null);
+    }
+
+    private void notifyWebGoogleSignInError(String message) {
+        if (webView == null) return;
+        String js = "if (window.TwitPro && window.TwitPro.onNativeGoogleSignInError) { window.TwitPro.onNativeGoogleSignInError(" + JSONObject.quote(message) + "); }";
+        webView.evaluateJavascript(js, null);
+    }
+
     private void loadCurrentServer() {
         webView.loadUrl(SERVER_URL);
     }
@@ -379,6 +442,26 @@ public class MainActivity extends AppCompatActivity {
                 }
                 fileUploadCallback.onReceiveValue(results);
                 fileUploadCallback = null;
+            }
+        } else if (requestCode == GOOGLE_SIGN_IN_REQUEST_CODE) {
+            Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+            try {
+                GoogleSignInAccount account = task.getResult(ApiException.class);
+                String idToken = account != null ? account.getIdToken() : null;
+                if (idToken != null && !idToken.isEmpty()) {
+                    Log.d(TAG, "Native Google Sign-In succeeded for: " + account.getEmail());
+                    notifyWebGoogleIdToken(idToken);
+                } else {
+                    notifyWebGoogleSignInError("Could not retrieve Google ID token. Please try again.");
+                }
+            } catch (ApiException e) {
+                Log.w(TAG, "Native Google Sign-In failed/cancelled, code=" + e.getStatusCode(), e);
+                if (e.getStatusCode() == 12501) {
+                    // User cancelled account picker
+                    notifyWebGoogleSignInError("");
+                } else {
+                    notifyWebGoogleSignInError("Google Sign-In failed (code " + e.getStatusCode() + ").");
+                }
             }
         } else if (requestCode == StickerPackManager.ADD_PACK_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {

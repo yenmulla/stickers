@@ -67,4 +67,7 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-messaging'
     implementation 'com.google.firebase:firebase-analytics'
+
+    // Native Google Account Picker (1-tap Google Sign-In without password prompts in WebView)
+    implementation 'com.google.android.gms:play-services-auth:21.3.0'
 }

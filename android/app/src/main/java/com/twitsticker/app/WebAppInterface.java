@@ -130,4 +130,23 @@ public class WebAppInterface {
     public void openStickerPackInWhatsApp(String packId) {
         mainHandler.post(() -> packManager.addPackToWhatsApp(activity, packId));
     }
+
+    @JavascriptInterface
+    public void signInWithGoogle() {
+        Log.d(TAG, "Native Google Sign-In requested from WebView");
+        mainHandler.post(() -> {
+            if (activity instanceof MainActivity) {
+                ((MainActivity) activity).launchNativeGoogleSignIn();
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void signOutGoogle() {
+        mainHandler.post(() -> {
+            if (activity instanceof MainActivity) {
+                ((MainActivity) activity).signOutNativeGoogle();
+            }
+        });
+    }
 }
