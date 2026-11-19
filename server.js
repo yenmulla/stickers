@@ -108,7 +108,7 @@ app.get(['/download/twitsticker.apk', '/api/app/download'], (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'application/vnd.android.package-archive',
     'Content-Length': stat.size,
-    'Content-Disposition': 'attachment; filename="TwitSticker-v1.0.3.apk"',
+    'Content-Disposition': 'attachment; filename="TwitSticker-v1.0.4.apk"',
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
     'Pragma': 'no-cache',
     'Expires': '0'
