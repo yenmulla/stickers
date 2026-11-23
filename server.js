@@ -75,6 +75,7 @@ const UPLOADS_DIR = path.join(__dirname, 'uploads');
 });
 
 // Multer storage for direct file uploads
+const MAX_UPLOAD_MB = Math.max(50, parseInt(process.env.MAX_UPLOAD_MB || '200', 10));
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOADS_DIR),
   filename: (req, file, cb) => {
@@ -84,8 +85,54 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB max upload
+  limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024 } // 200MB max upload by default
 });
+
+function uploadSingleMedia(req, res, next) {
+  upload.single('mediaFile')(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        console.warn(`[Upload] Rejected oversized file (${err.field || 'mediaFile'}): exceeds ${MAX_UPLOAD_MB}MB limit`);
+        return res.status(413).json({
+          error: `File is too large. Maximum upload size is ${MAX_UPLOAD_MB} MB. Try trimming or uploading a shorter clip.`,
+          code: 'LIMIT_FILE_SIZE'
+        });
+      }
+      return res.status(400).json({
+        error: `File upload error: ${err.message}`,
+        code: err.code
+      });
+    }
+    return res.status(400).json({ error: err.message || 'Failed to upload media file' });
+  });
+}
+
+/**
+ * Computes a fast, low-memory SHA-256 fingerprint of an uploaded file
+ * using file size + first and last 64KB chunks (avoids reading 200MB into RAM).
+ */
+function fingerprintUploadedFile(filePath) {
+  const stat = fs.statSync(filePath);
+  const hash = crypto.createHash('sha256');
+  hash.update(`size:${stat.size}|`);
+  const chunkSize = Math.min(65536, stat.size);
+  if (chunkSize > 0) {
+    const fd = fs.openSync(filePath, 'r');
+    try {
+      const buf = Buffer.alloc(chunkSize);
+      fs.readSync(fd, buf, 0, chunkSize, 0);
+      hash.update(buf);
+      if (stat.size > chunkSize * 2) {
+        fs.readSync(fd, buf, 0, chunkSize, stat.size - chunkSize);
+        hash.update(buf);
+      }
+    } finally {
+      fs.closeSync(fd);
+    }
+  }
+  return 'upload_' + hash.digest('hex').slice(0, 20);
+}
 
 app.use(cors());
 
@@ -507,7 +554,7 @@ app.get('/api/proxy-media', (req, res) => {
 });
 
 // 2. Convert to WhatsApp sticker
-app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, proMax: 60, message: 'Too many conversion requests. Please wait a moment.' }), upload.single('mediaFile'), async (req, res) => {
+app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, proMax: 60, message: 'Too many conversion requests. Please wait a moment.' }), uploadSingleMedia, async (req, res) => {
   let tempUploadedFile = null;
   try {
     const isPro = Boolean(req.user && req.user.isPro);
@@ -531,8 +578,7 @@ app.post('/api/convert', rateLimit({ windowMs: 60 * 1000, max: 15, proMax: 60, m
       inputSource = req.file.path;
       tempUploadedFile = req.file.path;
       try {
-        const fileBuf = fs.readFileSync(req.file.path);
-        inputKey = 'upload_' + crypto.createHash('sha256').update(fileBuf).digest('hex').slice(0, 20);
+        inputKey = fingerprintUploadedFile(req.file.path);
       } catch (e) {
         inputKey = 'upload_' + Date.now();
       }
